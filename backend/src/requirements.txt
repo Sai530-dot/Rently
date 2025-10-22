@@ -1,0 +1,4 @@
+Django==4.2.7
+firebase-admin==6.5.0
+requests==2.31.0
+django-cors-headers==4.3.1
