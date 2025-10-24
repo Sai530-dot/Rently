@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const SignupForm = ({ userType, onBack, onShowLogin }) => {
+const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -62,7 +62,7 @@ const SignupForm = ({ userType, onBack, onShowLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     // Basic validation
     const requiredFields = ['name', 'email', 'password', 'confirmPassword'];
     if (userType === 'landlord-signup') {
@@ -93,49 +93,24 @@ const SignupForm = ({ userType, onBack, onShowLogin }) => {
       return;
     }
 
+    // Phone number validation for landlords
+    if (userType === 'landlord-signup') {
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      if (!phoneRegex.test(formData.phone.replace(/\s/g, ""))) {
+        alert('Please enter a valid phone number');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
-    try {
-      const submitData = {
-        email: formData.email,
-        password: formData.password,
-        name: formData.name
-      };
-
-      let apiUrl = '';
-
-      if (userType === 'student-signup') {
-        submitData.university = formData.university;
-        apiUrl = 'http://127.0.0.1:8000/api/signup/student/';
-      } else {
-        submitData.phone = formData.phone;
-        if (formData.company) submitData.company = formData.company;
-        apiUrl = 'http://127.0.0.1:8000/api/signup/landlord/';
-      }
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData)
-      });
-
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        const userTypeName = userType.replace('-signup', '');
-        alert(`${userTypeName.charAt(0).toUpperCase() + userTypeName.slice(1)} account created successfully!`);
-        onShowLogin();
-      } else {
-        alert(`Error: ${result.message}`);
-      }
-
-    } catch (error) {
-      alert(`Signup failed: ${error.message}`);
-    } finally {
+    // Simulate API call
+    setTimeout(() => {
+      const userTypeName = userType.replace('-signup', '');
+      alert(`${userTypeName.charAt(0).toUpperCase() + userTypeName.slice(1)} account created successfully! (This is a demo)`);
       setIsLoading(false);
-    }
+      onShowProfileSetup();
+    }, 1500);
   };
 
   const handleTermsClick = (e) => {
@@ -151,7 +126,7 @@ const SignupForm = ({ userType, onBack, onShowLogin }) => {
   const isStudentSignup = userType === 'student-signup';
   const userTypeName = userType.replace('-signup', '');
 
-  return (
+return (
     <div className="login-form-container">
       <div className="welcome-text">
         <h2>Create {userTypeName.charAt(0).toUpperCase() + userTypeName.slice(1)} Account</h2>
@@ -342,5 +317,4 @@ const SignupForm = ({ userType, onBack, onShowLogin }) => {
     </div>
   );
 };
-
 export default SignupForm;
