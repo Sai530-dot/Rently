@@ -1,0 +1,32 @@
+:root {
+  --tinder-red: #fd5068;
+  --tinder-pink: #ff6b9d;
+  --tinder-orange: #ff8a80;
+  --white: #ffffff;
+  --light-gray: #f8f9fa;
+  --dark-gray: #2c2c2c;
+  --text-gray: #666666;
+  --border-gray: #e0e0e0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--white);
+  color: var(--dark-gray);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
