@@ -1,0 +1,39 @@
+:root {
+  --tinder-red: #fd5068;
+  --tinder-pink: #ff6b9d;
+  --tinder-orange: #ff8a80;
+  --white: #ffffff;
+  --light-gray: #f8f9fa;
+  --dark-gray: #2c2c2c;
+  --text-gray: #666666;
+  --border-gray: #e0e0e0;
+}
+
+/* Dark mode variables */
+.dark-mode {
+  --white: #1a1a1a;
+  --light-gray: #2d2d2d;
+  --dark-gray: #ffffff;
+  --text-gray: #b0b0b0;
+  --border-gray: #404040;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --accent-gold: #ffd700;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--white);
+  color: var(--dark-gray);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
