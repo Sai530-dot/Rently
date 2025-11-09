@@ -1,25 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8"/>
-    <title>Chat Rooms</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Rooms - Reelty</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #000000;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #666666;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            font-size: 14px;
+            color: #000000;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .room-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            background-color: #f5f5f5;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .room-input:focus {
+            border-color: #007AFF;
+            background-color: #ffffff;
+        }
+
+        .enter-button {
+            width: 100%;
+            padding: 14px;
+            background-color: #007AFF;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 8px;
+        }
+
+        .enter-button:hover {
+            background-color: #0056b3;
+        }
+
+        .enter-button:active {
+            background-color: #004494;
+        }
+    </style>
 </head>
 <body>
-    What chat room would you like to enter?<br>
-    <input id="room-name-input" type="text" size="100"><br>
-    <input id="room-name-submit" type="button" value="Enter">
+    <div class="container">
+        <h1 class="title">Chat Rooms</h1>
+        <p class="subtitle">Enter a room name to start chatting</p>
+        <div class="input-group">
+            <label class="input-label" for="room-name-input">Room Name</label>
+            <input id="room-name-input" type="text" class="room-input" placeholder="Enter room name..." maxlength="50">
+        </div>
+        <button id="room-name-submit" class="enter-button">Enter Chat Room</button>
+    </div>
 
     <script>
         document.querySelector('#room-name-input').focus();
         document.querySelector('#room-name-input').onkeyup = function(e) {
-            if (e.key === 'Enter') {  // enter, return
+            if (e.key === 'Enter') {
                 document.querySelector('#room-name-submit').click();
             }
         };
 
         document.querySelector('#room-name-submit').onclick = function(e) {
-            var roomName = document.querySelector('#room-name-input').value;
-            window.location.pathname = '/chat/' + roomName + '/';
+            var roomName = document.querySelector('#room-name-input').value.trim();
+            if (roomName) {
+                window.location.pathname = '/chat/' + roomName + '/';
+            }
         };
     </script>
 </body>
