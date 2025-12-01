@@ -9,17 +9,17 @@
       }
     },
     {
-      "src": "backend/src/reelty_backend/wsgi.py",
+      "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.9"
+        "runtime": "python3.11"
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/backend/src/reelty_backend/wsgi.py"
+      "dest": "/api/index.py"
     },
     {
       "src": "/static/(.*)",

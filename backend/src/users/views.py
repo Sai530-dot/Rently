@@ -59,6 +59,8 @@ except Exception as e:
     print(f"Firebase init error: {e}")
 
 
+# views.py (Updated student_signup)
+
 @csrf_exempt
 def student_signup(request):
     if request.method == 'POST':
@@ -69,11 +71,15 @@ def student_signup(request):
             name = data.get('name', '')
             university = data.get('university', '')
 
-            # 1. Validate student email
+            # DEBUG PRINT
+            print(f"Attempting signup for: {email}")
+
+            # 1. Validate student email (Ensure you are using a valid domain during test!)
             if not is_student_email(email):
+                print(f"Invalid domain: {email}")
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Please use a valid student email address (.edu)'
+                    'message': 'Please use a valid student email address (.edu, .ca, etc.)'
                 })
 
             # 2. Create user in Firebase
@@ -85,37 +91,47 @@ def student_signup(request):
                     email_verified=False
                 )
                 print(f"Firebase user created: {firebase_user.uid}")
+            
             except auth.EmailAlreadyExistsError:
+                print("Firebase Error: Email exists")
                 return JsonResponse({
                     'status': 'error',
                     'message': 'An account with this email already exists'
                 })
-            except Exception as e:
+            except Exception as fb_error:
+                print(f"Firebase Critical Error: {fb_error}")
+                # This helps see if it's a credential/permission issue
                 return JsonResponse({
                     'status': 'error',
-                    'message': f'Firebase error: {str(e)}'
+                    'message': f'Firebase error: {str(fb_error)}'
                 })
 
             # 3. Create user in Django
-            user = CustomUser.objects.create_user(
-                username=email,
-                email=email,
-                password=password,
-                user_type='student',
-                first_name=name,
-                university=university
-            )
-            print(f"Django user created: {user.id}")
+            try:
+                user = CustomUser.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=password,
+                    user_type='student',
+                    first_name=name,
+                    university=university
+                )
+                print(f"Django user created: {user.id}")
+            except Exception as db_error:
+                # If Django fails, we should ideally delete the Firebase user to keep sync,
+                # but for now let's just report the error.
+                print(f"Django DB Error: {db_error}")
+                return JsonResponse({'status': 'error', 'message': f"Database error: {str(db_error)}"})
 
             return JsonResponse({
                 'status': 'success',
                 'user_id': user.id,
                 'firebase_uid': firebase_user.uid,
-                'message': 'Student account created! Check email for verification.'
+                'message': 'Student account created!'
             })
 
         except Exception as e:
-            print(f"Student signup error: {e}")
+            print(f"General Error: {e}")
             return JsonResponse({'status': 'error', 'message': str(e)})
 
 
