@@ -15,5 +15,5 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'reelty_backend.settings')
 
 application = get_wsgi_application()
 
-# Vercel looks for an `app` callable by default; alias the Django WSGI application.
+# Vercel expects `app` as the callable entrypoint; alias the Django WSGI app.
 app = application
