@@ -23,15 +23,15 @@
     },
     {
       "src": "/static/(.*)",
-      "dest": "/static/$1"
+      "dest": "/build/static/$1"
     },
     {
       "src": "/(.*\\..*)",
-      "dest": "/frontend/build/$1"
+      "dest": "/build/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/build/index.html"
+      "dest": "/build/index.html"
     }
   ]
 }
