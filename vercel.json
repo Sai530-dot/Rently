@@ -5,7 +5,7 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "installCommand": "cd frontend && npm install",
+        "installCommand": "rm -rf node_modules && cd frontend && npm ci",
         "buildCommand": "cd frontend && npm run build",
         "distDir": "build"
       }
