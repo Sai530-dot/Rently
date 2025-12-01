@@ -5,17 +5,14 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "frontend/build",
-        "installCommand": "npm install --prefix frontend",
-        "buildCommand": "npm run build --prefix frontend",
-        "outputDirectory": "frontend/build"  
+        "distDir": "build"
       }
     },
     {
-      "src": "backend/wsgi.py",
+      "src": "backend/src/reelty_backend/wsgi.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.11" 
+        "runtime": "python3.9"
       }
     }
   ],
@@ -26,7 +23,7 @@
     },
     {
       "src": "/api/(.*)",
-      "dest": "backend/wsgi.py"
+      "dest": "backend/src/reelty_backend/wsgi.py"
     },
     {
       "src": "/(.*)",
