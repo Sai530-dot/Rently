@@ -2,36 +2,38 @@
   "version": 2,
   "builds": [
     {
-      "src": "/package.json",
+      "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
+        "installCommand": "cd frontend && npm install",
+        "buildCommand": "cd frontend && npm start",
         "distDir": "build"
       }
     },
     {
-      "src": "backend/src/reelty_backend/wsgi.py",
+      "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.9"
+        "runtime": "python3.11"
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/src/reelty_backend/wsgi.py"
+      "dest": "/api/index.py"
     },
     {
       "src": "/static/(.*)",
-      "dest": "frontend/build/$1"
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*\\..*)",
-      "dest": "frontend/build/$1"
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "frontend/build/index.html"
+      "dest": "/index.html"
     }
   ]
 }
