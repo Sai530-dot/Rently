@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.11"
-    }
-  },
   "builds": [
     {
       "src": "frontend/package.json",
@@ -14,14 +9,17 @@
       }
     },
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
+      "src": "backend/src/reelty_backend/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.9"
+      }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.py"
+      "dest": "/backend/src/reelty_backend/wsgi.py"
     },
     {
       "src": "/static/(.*)",
