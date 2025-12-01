@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import realListings from '../data/real_listings.json';
+import craigslistData from '../data/craigslist_listings.json';
+import kijijiData from '../data/kijiji_listings.json';
+
+const ALL_LISTINGS = [...craigslistData, ...kijijiData];
 
 const SAMPLE_PROPERTIES = [
   {
@@ -124,8 +129,8 @@ const SAMPLE_PROPERTIES = [
 ];
 
 const BrowseProperties = ({ onBack, userPreferences }) => {
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState(realListings.length > 0 ? realListings : []);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [filterBedrooms, setFilterBedrooms] = useState('all');
@@ -159,32 +164,41 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
     console.log(`📂 Loaded ${savedIds.length} saved properties from localStorage`);
   };
 
-  const fetchProperties = async () => {
+ const fetchProperties = () => {
     setLoading(true);
     setError(null);
-    console.log('🔄 Fetching properties from API...');
+    console.log('🔄 Fetching properties...');
     
-    try {
-      const response = await fetch('http://localhost:5000/api/properties');
-      console.log('📡 Response status:', response.status);
-      
-      const data = await response.json();
-      console.log('📊 API Response:', data);
-      
-      if (data.success && data.properties) {
-        console.log(`✅ Loaded ${data.properties.length} properties`);
-        setProperties(data.properties);
+    // Using .then().catch() avoids the try/catch syntax error completely
+    fetch('http://localhost:5000/api/properties')
+      .then(response => {
+        console.log('📡 Response status:', response.status);
+        return response.json();
+      })
+      .then(data => {
+        console.log('📊 API Response:', data);
+        if (data.success && data.properties) {
+          console.log(`✅ Loaded ${data.properties.length} properties from Server`);
+          setProperties(data.properties);
+          setLoading(false);
+        } else {
+          throw new Error('No properties found on server');
+        }
+      })
+      .catch(err => {
+        // This block runs if server is down
+        console.error('❌ Connection failed, switching to fallback.');
+        
+      if (ALL_LISTINGS && ALL_LISTINGS.length > 0) {
+        console.log(`📂 Server down. Using ${ALL_LISTINGS.length} total scraped listings.`);
+        setProperties(ALL_LISTINGS);
+        setError(null);
       } else {
-        setError('No properties found');
+        console.log('⚠️ No scraped data found, using samples');
+        setProperties(SAMPLE_PROPERTIES);
       }
-    } catch (error) {
-      console.error('❌ Error fetching properties:', error);
-      setError('Cannot connect to server. Using sample data.');
-      // Fallback to sample data
-      setProperties(SAMPLE_PROPERTIES);
-    } finally {
-      setLoading(false);
-    }
+        setLoading(false);
+      });
   };
 
   const handleSaveProperty = (propertyId) => {
@@ -410,22 +424,30 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
         <div className="properties-grid">
           {filteredProperties.map(property => (
           <div key={property.id} className="property-card">
-            <div className="property-image">
-              <span className="property-icon">{property.image}</span>
+            <div 
+              className="property-image" 
+              style={{
+                // If it's a URL, set as background image. If emoji, use gradient.
+                backgroundImage: property.image.startsWith('http') 
+                  ? `url(${property.image})` 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+            >
+              {/* Only show the emoji span if it IS NOT a URL */}
+              {!property.image.startsWith('http') && (
+                <span className="property-icon">{property.image}</span>
+              )}
+
               <button
                 className={`save-btn ${savedProperties.includes(property.id) ? 'saved' : ''}`}
                 onClick={() => handleSaveProperty(property.id)}
               >
                 {savedProperties.includes(property.id) ? '❤️' : '🤍'}
               </button>
+              
               <span className="available-badge">{property.available}</span>
-              {property.aiAnalysis && (
-                <div className="ai-quality-badge">
-                  <span className="ai-icon">🤖</span>
-                  <span className="ai-score">{property.aiAnalysis.qualityScore}</span>
-                  <span className="ai-label">AI Score</span>
-                </div>
-              )}
             </div>
 
             <div className="property-details">

@@ -47,7 +47,7 @@ const Footer = () => {
       </div>
 
       <div className="footer-bottom">
-        <p>&copy; 2024 Rently. All rights reserved. Made with ❤️ for students across Canada.</p>
+        <p>&copy; 2025 Rently. All rights reserved. Made for students across Canada.</p>
       </div>
 
       <style>{`

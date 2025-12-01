@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import realListings from './data/real_listings.json';
 
 // Position mapping for visualization
 const POSITION_MAP = {
