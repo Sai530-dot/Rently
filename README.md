@@ -11,8 +11,8 @@ React frontend + Django backend. Frontend runs with `npm start`; backend runs wi
 
 ## Commands
 - Frontend dev: `cd frontend && npm start`
-- Backend dev: `cd backend/src && python manage.py runserver 0.0.0.0:8000`
 - Frontend build: `cd frontend && npm run build`
+- Backend dev: `cd backend/src && python manage.py runserver 0.0.0.0:8000`
 
 ## Notes
 - Legacy Node/Express backend removed; backend is Django-only.
