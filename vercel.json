@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.11"
-    }
-  },
   "builds": [
     {
       "src": "frontend/package.json",
@@ -15,7 +10,10 @@
     },
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.11"
+      }
     }
   ],
   "routes": [
