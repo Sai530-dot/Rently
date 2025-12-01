@@ -6,9 +6,22 @@ const LocationPreference = ({ onNext, userPreferences, setUserPreferences }) => 
   const [selectedLocation, setSelectedLocation] = useState(userPreferences.location || null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   const apiKey = process.env.REACT_APP_GEOAPIFY_API_KEY;
+  const fallbackCities = [
+    'Toronto, ON, Canada',
+    'Vancouver, BC, Canada',
+    'Montreal, QC, Canada',
+    'Calgary, AB, Canada',
+    'Ottawa, ON, Canada',
+    'Edmonton, AB, Canada',
+    'Waterloo, ON, Canada',
+    'London, ON, Canada',
+    'Kitchener, ON, Canada',
+    'Victoria, BC, Canada'
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -34,24 +47,46 @@ const LocationPreference = ({ onNext, userPreferences, setUserPreferences }) => 
         return;
       }
 
+      setError('');
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(inputValue)}&apiKey=${apiKey}&limit=5`
-        );
-        const data = await response.json();
-
-        if (data.features && data.features.length > 0) {
-          setSuggestions(data.features);
-          setShowSuggestions(true);
+        if (!apiKey) {
+          // Fallback to local suggestions when no API key is set.
+          const filtered = fallbackCities
+            .filter((c) => c.toLowerCase().includes(inputValue.toLowerCase()))
+            .map((c, idx) => ({
+              properties: {
+                formatted: c,
+                address_line1: c,
+                place_id: `fallback-${idx}`
+              },
+              geometry: { coordinates: [0, 0] }
+            }));
+          setSuggestions(filtered);
+          setShowSuggestions(filtered.length > 0);
+          if (filtered.length === 0) {
+            setError('Add REACT_APP_GEOAPIFY_API_KEY to enable live location search.');
+          }
         } else {
-          setSuggestions([]);
-          setShowSuggestions(false);
+          const response = await fetch(
+            `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(inputValue)}&apiKey=${apiKey}&limit=5`
+          );
+          const data = await response.json();
+
+          if (data.features && data.features.length > 0) {
+            setSuggestions(data.features);
+            setShowSuggestions(true);
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            setError('No matches found. Try another query.');
+          }
         }
       } catch (error) {
         console.error('Error fetching suggestions:', error);
         setSuggestions([]);
         setShowSuggestions(false);
+        setError('Unable to fetch locations. Check your connection or API key.');
       } finally {
         setIsLoading(false);
       }
@@ -67,6 +102,7 @@ const LocationPreference = ({ onNext, userPreferences, setUserPreferences }) => 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
     setSelectedLocation(null);
+    setError('');
   };
 
   const handleSuggestionClick = (suggestion) => {
@@ -251,6 +287,17 @@ const LocationPreference = ({ onNext, userPreferences, setUserPreferences }) => 
         >
           Continue
         </button>
+
+        {error && (
+          <p style={{ 
+            textAlign: 'center', 
+            marginTop: '10px', 
+            fontSize: '0.85rem', 
+            color: 'var(--tinder-red)' 
+          }}>
+            {error}
+          </p>
+        )}
         
         {!selectedLocation && inputValue.trim() && (
           <p style={{ 
