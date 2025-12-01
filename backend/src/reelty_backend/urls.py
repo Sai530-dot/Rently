@@ -1,6 +1,6 @@
 from django.urls import path, include
 
-# Expose user endpoints at the API root; Vercel already routes /api/* to this app.
+# Vercel forwards requests with the /api prefix intact, so keep the 'api/' path here.
 urlpatterns = [
-    path('', include('users.urls')),
+    path('api/', include('users.urls')),
 ]
