@@ -4,7 +4,7 @@ import os
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
-from .models import CustomUser
+from .models import CustomUser, RoommateProfile
 import firebase_admin
 from firebase_admin import credentials, auth
 from .matching import calculate_similarity
@@ -130,7 +130,7 @@ def student_signup(request):
                 'message': 'Student account created!'
             })
 
-        except Exception as e:
+        except Exception as e:   
             print(f"General Error: {e}")
             return JsonResponse({'status': 'error', 'message': str(e)})
 
@@ -339,33 +339,100 @@ def generate_recommendations(score):
     if score < 50: return ["Negotiate rent down", "Compare with similar listings"]
     return ["Good option", "Verify lease terms"]
 
+def _get_user_from_identifier(identifier):
+    """
+    Accept either a numeric user id or an email string and return the matching user.
+    """
+    if identifier is None:
+        raise CustomUser.DoesNotExist("User identifier is missing")
+    # Try numeric id first
+    try:
+        return CustomUser.objects.get(id=int(identifier))
+    except (ValueError, CustomUser.DoesNotExist):
+        # Fall back to email lookup (case-insensitive)
+        return CustomUser.objects.get(email__iexact=str(identifier))
+
+
+@csrf_exempt
+def save_roommate_preferences(request):
+    """
+    Persist roommate preferences for the signed-in user so matching can use real data.
+    Expected POST body: { user_id (or email), budget, cleanliness, sleepSchedule, interests[], rentAsk?, city?, major?, avatar? }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid method'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        user_identifier = data.get('user_id')
+        user = _get_user_from_identifier(user_identifier)
+
+        profile, _ = RoommateProfile.objects.get_or_create(user=user)
+        profile.budget_max = data.get('budget', profile.budget_max or 0)
+        profile.rent_ask = data.get('rentAsk', profile.rent_ask or profile.budget_max or 0)
+        profile.cleanliness = data.get('cleanliness', profile.cleanliness or 'moderate')
+        profile.sleep_schedule = data.get('sleepSchedule', profile.sleep_schedule or 'flexible')
+        profile.interests = data.get('interests', profile.interests or [])
+        profile.city = data.get('city', profile.city)
+        profile.major = data.get('major', profile.major)
+        profile.avatar = data.get('avatar', profile.avatar)
+        profile.save()
+
+        return JsonResponse({'success': True, 'message': 'Preferences saved'})
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
 @csrf_exempt
 def match_roommates(request):
     if request.method == 'POST':
         try:
-            # 1. Get the current user's preferences from the frontend
             data = json.loads(request.body)
+            user_identifier = data.get('user_id')
+            if not user_identifier:
+                return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
+
+            # Load the requesting user's saved preferences
+            try:
+                user = _get_user_from_identifier(user_identifier)
+                requester_profile = RoommateProfile.objects.get(user=user)
+            except RoommateProfile.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Preferences not saved for user'}, status=404)
+            except CustomUser.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
+
             user_prefs = {
-                'budget_max': data.get('budget', 1000),
-                'cleanliness': data.get('cleanliness', 'moderate'), # messy, moderate, clean, very_clean
-                'sleep_schedule': data.get('sleepSchedule', 'flexible'),
-                'interests': data.get('interests', [])
+                'budget_max': requester_profile.budget_max,
+                'cleanliness': requester_profile.cleanliness,
+                'sleep_schedule': requester_profile.sleep_schedule,
+                'interests': requester_profile.interests or [],
             }
 
-            # 2. Run the Algorithm
-            ranked_matches = []
-            
-            for candidate in MOCK_CANDIDATES:
-                score = calculate_similarity(user_prefs, candidate)
-                
-                # Only return decent matches (> 40%)
-                if score > 40:
-                    # Add score to the candidate object so frontend sees it
-                    candidate_with_score = candidate.copy()
-                    candidate_with_score['match_score'] = score
-                    ranked_matches.append(candidate_with_score)
+            # Gather candidate profiles (exclude self)
+            candidates = RoommateProfile.objects.exclude(user_id=user.id).select_related('user')
 
-            # 3. Sort by highest score
+            ranked_matches = []
+            for candidate in candidates:
+                candidate_profile = {
+                    'id': candidate.user_id,
+                    'name': candidate.user.first_name or candidate.user.username,
+                    'major': candidate.major or '',
+                    'rent_ask': candidate.rent_ask or candidate.budget_max,
+                    'cleanliness': candidate.cleanliness,
+                    'sleep_schedule': candidate.sleep_schedule,
+                    'interests': candidate.interests or [],
+                    'image': '',  # placeholder until avatars are stored
+                    'avatar': candidate.avatar or '',
+                    'city': candidate.city or '',
+                }
+
+                score = calculate_similarity(user_prefs, candidate_profile)
+                if score > 40:
+                    candidate_profile['match_score'] = score
+                    ranked_matches.append(candidate_profile)
+
             ranked_matches.sort(key=lambda x: x['match_score'], reverse=True)
 
             return JsonResponse({

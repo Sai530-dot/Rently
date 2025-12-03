@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
   const [formData, setFormData] = useState({
@@ -102,15 +103,37 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
       }
     }
 
-    setIsLoading(true);
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+    };
 
-    // Simulate API call
-    setTimeout(() => {
+    if (userType === 'student-signup') {
+      payload.university = formData.university;
+    } else {
+      payload.phone = formData.phone;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = userType === 'student-signup'
+        ? await api.studentSignup(payload)
+        : await api.landlordSignup(payload);
+
+      if (response.status !== 'success') {
+        throw new Error(response.message || 'Signup failed');
+      }
+
       const userTypeName = userType.replace('-signup', '');
-      alert(`${userTypeName.charAt(0).toUpperCase() + userTypeName.slice(1)} account created successfully! (This is a demo)`);
-      setIsLoading(false);
+      alert(response.message || `${userTypeName.charAt(0).toUpperCase() + userTypeName.slice(1)} account created successfully!`);
       onShowProfileSetup();
-    }, 1500);
+    } catch (error) {
+      console.error('Signup error:', error);
+      alert(error.message || 'Failed to create account. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleTermsClick = (e) => {

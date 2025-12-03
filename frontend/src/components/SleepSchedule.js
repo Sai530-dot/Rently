@@ -6,8 +6,9 @@ const SleepSchedule = ({ onNext, userPreferences, setUserPreferences }) => {
 
   const handleContinue = () => {
     if (sleepTime) {
-      setUserPreferences({ ...userPreferences, sleepSchedule: sleepTime });
-      onNext();
+      const nextPrefs = { ...userPreferences, sleepSchedule: sleepTime };
+      setUserPreferences(nextPrefs);
+      onNext(nextPrefs);
     }
   };
 

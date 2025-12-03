@@ -41,4 +41,15 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  // Roommate matching
+  savePreferences: (data) => apiCall('/roommate-matching/save-preferences', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  matchRoommates: (data) => apiCall('/roommate-matching/match', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };

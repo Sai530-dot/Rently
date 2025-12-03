@@ -48,7 +48,11 @@ const LoginForm = ({ userType, onBack, onShowSignup, onLoginSuccess }) => {
       // Extract first name from email for demo purposes
       const firstName = formData.email.split('@')[0];
       if (onLoginSuccess) {
-        onLoginSuccess({ firstName, email: formData.email });
+        onLoginSuccess({
+          id: formData.email, // use email as stable ID for now
+          firstName,
+          email: formData.email
+        });
       }
     }, 1500);
   };

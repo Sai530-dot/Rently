@@ -11,9 +11,33 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
   const [allListings, setAllListings] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
   const [avgRent, setAvgRent] = useState(0);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [appearance, setAppearance] = useState('light');
+  const [profileForm, setProfileForm] = useState({
+    avatar: userProfile?.avatar || '',
+  });
+
+  const effectiveUserId = userProfile?.id || userProfile?.email || 'anon';
+  const storedPrefs = (() => {
+    try {
+      const namespaced = localStorage.getItem(`rently_user_preferences_${effectiveUserId}`);
+      const legacy = localStorage.getItem('rently_user_preferences');
+      return JSON.parse(namespaced || legacy || 'null');
+    } catch {
+      return null;
+    }
+  })();
+  const storedProfileForm = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(`rently_profile_form_${effectiveUserId}`) || 'null');
+    } catch {
+      return null;
+    }
+  })();
+  const resolvedBudget = userPreferences?.budget ?? storedPrefs?.budget ?? storedProfileForm?.budget ?? '';
 
   const getBudgetCap = () => {
-    const budget = parseInt(userPreferences?.budget, 10);
+    const budget = parseInt(resolvedBudget, 10);
     return Number.isFinite(budget) ? budget + 200 : 1700;
   };
 
@@ -33,11 +57,40 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
   const getListingLocation = (item) => item.address || item.location || 'See details';
   const isImageUrl = (src) => typeof src === 'string' && src.startsWith('http');
 
+  const shortLocation = (loc) => {
+    const parseLocString = (locStr) => {
+      try { return JSON.parse(locStr.replace(/'/g, '"')); } catch { return null; }
+    };
+    if (!loc) return '';
+    let locObj = loc;
+    if (typeof locObj === 'string') {
+      if (!locObj.includes('address_line1')) return locObj;
+      const parsed = parseLocString(locObj);
+      if (parsed) locObj = parsed; else return locObj;
+    }
+    if (locObj.address_line1 && locObj.address_line2) return `${locObj.address_line1}, ${locObj.address_line2}`;
+    if (locObj.address_line1 && locObj.city) return `${locObj.address_line1}, ${locObj.city}`;
+    if (locObj.formatted) return locObj.formatted;
+    if (locObj.city) return locObj.city;
+    return '';
+  };
+
   // Load saved matches once
   useEffect(() => {
-    const savedMatches = JSON.parse(localStorage.getItem('rently_matches') || '[]');
+    const namespacedKey = `rently_matches_user_${effectiveUserId}`;
+    const savedMatches = JSON.parse(localStorage.getItem(namespacedKey) || localStorage.getItem('rently_matches') || '[]');
     setMatches(savedMatches.slice(0, 3));
-  }, []);
+  }, [effectiveUserId]);
+
+  // Load saved profile avatar/bio from localStorage
+  useEffect(() => {
+    const savedProfile = (() => {
+      try { return JSON.parse(localStorage.getItem(`rently_profile_form_${effectiveUserId}`) || 'null'); } catch { return null; }
+    })();
+    if (savedProfile?.avatar && !profileForm.avatar) {
+      setProfileForm((prev) => ({ ...prev, avatar: savedProfile.avatar, bio: savedProfile.bio }));
+    }
+  }, [effectiveUserId, profileForm.avatar]);
 
   // Fetch property inventory for the dashboard
   useEffect(() => {
@@ -86,38 +139,51 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
     setFilteredListings(sortedListings.slice(0, 2));
   }, [allListings, userPreferences]);
 
-  // Handle "Connect" click - Auto-create chat and navigate
+  const convKey = `rently_conversations_user_${effectiveUserId}`;
+
   const handleConnect = (matchProfile) => {
-    // 1. Get existing conversations
-    const existingConvs = JSON.parse(localStorage.getItem('rently_conversations') || '[]');
-    
-    // 2. Check if conversation already exists
+    const existingConvs = JSON.parse(localStorage.getItem(convKey) || '[]');
     let conversation = existingConvs.find(c => c.id === matchProfile.id);
 
-    // 3. If not, create it
     if (!conversation) {
       conversation = {
         id: matchProfile.id,
         name: matchProfile.name,
-        avatar: matchProfile.image || '👤',
+        avatar: matchProfile.avatar || matchProfile.image || 'user',
         major: matchProfile.major || 'Student',
-        matchScore: 95, // You could calculate this dynamically
+        matchScore: matchProfile.match_score || 95,
         lastMessage: 'Matched via Dashboard!',
         timestamp: 'Just now',
         unread: 0,
         online: true
       };
-      const updatedConvs = [conversation, ...existingConvs];
-      localStorage.setItem('rently_conversations', JSON.stringify(updatedConvs));
+      localStorage.setItem(convKey, JSON.stringify([conversation, ...existingConvs]));
     }
 
-    // 4. Navigate to messages
     onNavigate('messages');
+  };
+
+  const handleProfileMenuToggle = () => {
+    setShowProfileMenu((prev) => !prev);
+  };
+
+  const handleAppearanceToggle = () => {
+    setAppearance((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setShowProfileMenu(false);
+  };
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileForm((prev) => ({ ...prev, avatar: reader.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
     <div className="dashboard-wrapper">
-      {/* --- MAIN CONTENT FEED --- */}
       <main className="main-feed">
         <header className="feed-header">
           <div>
@@ -128,18 +194,16 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
           </div>
         </header>
 
-        {/* Stats Row */}
         <div className="stats-grid">
           <div className="glass-card stat-card">
             <div className="stat-label">Your Budget</div>
             <div className="stat-val">
-              {userPreferences?.budget ? `$${userPreferences.budget}` : 'Not Set'}
+              {resolvedBudget ? `$${resolvedBudget}` : 'Not Set'}
             </div>
             <div className="progress-bg">
-              {/* Visual progress bar relative to a max of $3000 */}
               <div 
                 className="progress-fill" 
-                style={{width: `${Math.min(((userPreferences?.budget || 0) / 3000) * 100, 100)}%`}}
+                style={{width: `${Math.min(((parseInt(resolvedBudget, 10) || 0) / 3000) * 100, 100)}%`}}
               ></div>
             </div>
           </div>
@@ -149,7 +213,7 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
             <div className="stat-val">{matches.length}</div>
             <div className="avatar-group">
               {matches.slice(0, 3).map((m, i) => (
-                <span key={i} className="mini-avatar">{m.image || '👤'}</span>
+                <span key={i} className="mini-avatar">{m.image || 'user'}</span>
               ))}
               {matches.length === 0 && <span className="no-matches-text">Start matching!</span>}
             </div>
@@ -160,14 +224,13 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
             <div className="stat-val">${avgRent || 1100}</div>
             <div className="trend-up">
               {userPreferences?.budget && avgRent > userPreferences.budget 
-                ? <span style={{color: '#EF4444'}}>📉 Market is High</span>
-                : <span>📈 Good Buying Power</span>
+                ? <span style={{color: '#EF4444'}}>Market is High</span>
+                : <span>Good Buying Power</span>
               }
             </div>
           </div>
         </div>
 
-        {/* Property Listings */}
         <section className="section-block">
           <div className="section-header">
             <h3>{`Homes under $${getBudgetCap()}`}</h3>
@@ -226,7 +289,6 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
           </div>
         </section>
 
-        {/* Matches List */}
         <section className="section-block">
           <div className="section-header">
             <h3>Recent Roommate Matches</h3>
@@ -242,10 +304,11 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
             {matches.length > 0 ? (
               matches.map(match => (
                 <div key={match.id} className="glass-card match-row">
-                  <div className="match-avatar">{match.image || '👤'}</div>
+                  <div className="match-avatar">{match.avatar || match.image || 'user'}</div>
                   <div className="match-details">
                     <h4>{match.name}</h4>
-                    <p>{match.major} • {match.budget}</p>
+                    <p>{shortLocation(match.city || match.location)}</p>
+                    <p className="muted-line">Budget: ${match.rent_ask || match.budget_max || match.budget || '—'}/mo</p>
                   </div>
                   <button 
                     className="primary-btn"
@@ -264,48 +327,57 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
         </section>
       </main>
 
-      {/* --- RIGHT SIDEBAR (Widgets) --- */}
       <aside className="right-sidebar">
-        <div className="user-profile-snippet">
+        <div className="user-profile-snippet" onClick={handleProfileMenuToggle}>
           <div className="text-right">
             <div className="user-name">{firstName}</div>
             <div className="user-role">Student</div>
           </div>
-          <div className="user-avatar">{firstName[0]}</div>
+          <div className="user-avatar">{profileForm.avatar ? <img src={profileForm.avatar} alt="avatar" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : firstName[0]}</div>
+          {showProfileMenu && (
+            <div className="profile-menu light">
+              <div className="menu-item" onClick={() => onNavigate('settings')}>Settings</div>
+              <div className="menu-item" onClick={handleAppearanceToggle}>Switch appearance ({appearance})</div>
+              <div className="menu-divider" />
+              <div className="menu-item" onClick={() => onNavigate('messages')}>Messages</div>
+              <div className="menu-item" onClick={() => onNavigate('roommate-matching')}>Roommates</div>
+            </div>
+          )}
         </div>
 
-        <div className="widget-container">
-          <h4>Quick Actions</h4>
-          <div className="quick-links">
-            <div className="quick-link" onClick={() => onNavigate('roommate-matching')}>
-              <span className="icon">🤝</span> Find Roommates
-            </div>
-            <div className="quick-link" onClick={() => onNavigate('rent-map')}>
-              <span className="icon">🗺️</span> Rent Map
-            </div>
-            <div className="quick-link" onClick={() => onNavigate('offer-evaluator')}>
-              <span className="icon">📊</span> Evaluate Offer
+        <div className="sidebar-content">
+          <div className="widget-container">
+            <h4>Quick Actions</h4>
+            <div className="quick-links">
+              <div className="quick-link" onClick={() => onNavigate('roommate-matching')}>
+                <span className="icon">🤝</span> Find Roommates
+              </div>
+              <div className="quick-link" onClick={() => onNavigate('rent-map')}>
+                <span className="icon">🗺️</span> Rent Map
+              </div>
+              <div className="quick-link" onClick={() => onNavigate('offer-evaluator')}>
+                <span className="icon">📊</span> Evaluate Offer
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="widget-container">
-          <h4>Schedule</h4>
-          <div className="schedule-card">
-            <div className="calendar-date">
-              <span className="month">NOV</span>
-              <span className="day">24</span>
-            </div>
-            <div className="event-details">
-              <h5>Apartment Viewing</h5>
-              <p>10:00 AM - 11:00 AM</p>
+          <div className="widget-container">
+            <h4>Schedule</h4>
+            <div className="schedule-card">
+              <div className="calendar-date">
+                <span className="month">NOV</span>
+                <span className="day">24</span>
+              </div>
+              <div className="event-details">
+                <h5>Apartment Viewing</h5>
+                <p>10:00 AM - 11:00 AM</p>
+              </div>
             </div>
           </div>
         </div>
       </aside>
 
       <style>{`
-        /* RESET & LAYOUT */
         .dashboard-wrapper {
           display: grid;
           grid-template-columns: 1fr 340px;
@@ -313,25 +385,20 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
           font-family: 'Inter', sans-serif;
           background-color: #F3F4F6; 
         }
-
-        /* SCROLLABLE MAIN FEED */
         .main-feed {
           padding: 30px 40px;
           overflow-y: auto;
           max-height: calc(100vh - 60px);
         }
-
         .feed-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
           margin-bottom: 30px;
         }
-
         .feed-header h1 { margin: 0; font-size: 2rem; color: #111827; letter-spacing: -0.5px; }
         .date-display { color: #6B7280; font-size: 0.95rem; margin-top: 5px; font-weight: 500; }
 
-        /* GLASS CARD STYLES */
         .glass-card {
           background: white;
           border-radius: 16px;
@@ -339,39 +406,29 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
           border: 1px solid rgba(255,255,255,0.6);
           transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .glass-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-        }
+        .glass-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
 
-        /* STATS ROW */
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 20px;
           margin-bottom: 40px;
         }
-        
         .stat-card { padding: 20px; display: flex; flex-direction: column; justify-content: space-between; height: 140px; }
         .stat-label { color: #6B7280; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .stat-val { font-size: 2rem; font-weight: 700; color: #111827; margin: 10px 0; }
-        
         .progress-bg { width: 100%; height: 6px; background: #E5E7EB; border-radius: 10px; overflow: hidden; }
         .progress-fill { height: 100%; background: #3B82F6; border-radius: 10px; transition: width 0.5s ease; }
-        
         .avatar-group { display: flex; padding-left: 8px; align-items: center; }
         .mini-avatar { width: 28px; height: 28px; background: #E0E7FF; border-radius: 50%; border: 2px solid white; margin-left: -8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
         .no-matches-text { font-size: 0.8rem; color: #9CA3AF; margin-left: 5px; }
-        
         .trend-up { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
 
-        /* SECTIONS */
         .section-block { margin-bottom: 40px; }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .section-header h3 { margin: 0; font-size: 1.2rem; color: #374151; }
         .link-btn { background: none; border: none; color: #3B82F6; font-weight: 600; cursor: pointer; }
 
-        /* LISTINGS */
         .listing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
         .listing-card { overflow: hidden; display: flex; flex-direction: column; }
         .card-image-area { height: 140px; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; position: relative; }
@@ -383,38 +440,39 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
         .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
         .tag-pill { background: #F3F4F6; color: #4B5563; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; }
         .tag-pill.muted { background: #E5E7EB; color: #9CA3AF; }
-        
         .empty-placeholder { grid-column: 1 / -1; text-align: center; padding: 40px; background: white; border-radius: 16px; color: #6B7280; }
         .text-btn { background: none; border: none; color: #3B82F6; text-decoration: underline; cursor: pointer; margin-top: 10px; }
 
-        /* MATCHES */
         .match-stack { display: flex; flex-direction: column; gap: 15px; }
         .match-row { display: flex; align-items: center; padding: 16px 24px; gap: 15px; }
         .match-avatar { width: 42px; height: 42px; background: #FECACA; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         .match-details { flex: 1; }
         .match-details h4 { margin: 0; font-size: 1rem; color: #1F2937; }
         .match-details p { margin: 4px 0 0 0; color: #6B7280; font-size: 0.85rem; }
+        .muted-line { color: #9CA3AF; margin-top: 2px; font-size: 0.82rem; }
         .primary-btn { background: #111827; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
         .primary-btn:hover { opacity: 0.9; }
         .empty-matches { text-align: center; padding: 30px; color: #9CA3AF; font-style: italic; background: white; border-radius: 12px; }
 
-        /* RIGHT SIDEBAR */
         .right-sidebar {
           background: white;
           border-left: 1px solid #E5E7EB;
           padding: 30px;
           display: flex;
           flex-direction: column;
-          gap: 30px;
+          position: relative;
         }
-
         .user-profile-snippet { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-bottom: 10px; }
         .user-name { font-weight: 700; color: #111827; font-size: 0.95rem; }
         .user-role { color: #6B7280; font-size: 0.8rem; }
-        .user-avatar { width: 40px; height: 40px; background: #E5E7EB; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #374151; }
+        .user-avatar { width: 40px; height: 40px; background: #E5E7EB; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #374151; overflow: hidden; }
+        .profile-menu { position: absolute; right: -10px; top: 70px; width: 240px; background: rgba(255,255,255,0.7); color: #0f172a; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.12); padding: 12px 0; z-index: 20; backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.6); }
+        .menu-item { padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 500; }
+        .menu-item:hover { background: rgba(255,255,255,0.9); }
+        .menu-divider { height: 1px; background: rgba(15,23,42,0.08); margin: 10px 0; }
+        .sidebar-content { margin-top: auto; display: flex; flex-direction: column; gap: 30px; padding-top: 20px; }
 
         .widget-container h4 { margin: 0 0 15px 0; color: #111827; font-size: 0.95rem; }
-        
         .quick-links { display: flex; flex-direction: column; gap: 10px; }
         .quick-link { padding: 12px; background: #F9FAFB; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #374151; transition: background 0.2s; }
         .quick-link:hover { background: #F3F4F6; }
@@ -427,7 +485,6 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
         .event-details h5 { margin: 0 0 4px 0; font-size: 0.9rem; color: #1F2937; }
         .event-details p { margin: 0; font-size: 0.75rem; color: #6B7280; }
 
-        /* RESPONSIVE */
         @media (max-width: 1100px) {
           .dashboard-wrapper { grid-template-columns: 1fr; }
           .right-sidebar { display: none; }

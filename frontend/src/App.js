@@ -16,6 +16,8 @@ import SavedProperties from './components/SavedProperties';
 import BrowseProperties from './components/BrowseProperties';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
+import { api } from './services/api';
+import SettingsPage from './components/SettingsPage';
 
 function App() {
   const [currentView, setCurrentView] = useState('selection');
@@ -29,13 +31,55 @@ function App() {
     numRoommates: null
   });
 
+  const getPreferencesKey = (profile) => `rently_user_preferences_${profile?.id || profile?.email || 'anon'}`;
+
+  const loadPreferencesFor = (profile) => {
+    const namespaced = localStorage.getItem(getPreferencesKey(profile));
+    if (namespaced) return JSON.parse(namespaced);
+    const legacy = localStorage.getItem('rently_user_preferences');
+    return legacy ? JSON.parse(legacy) : null;
+  };
+
+  const savePreferencesFor = (profile, prefs) => {
+    localStorage.setItem(getPreferencesKey(profile), JSON.stringify(prefs));
+    // keep legacy key for backward compatibility
+    localStorage.setItem('rently_user_preferences', JSON.stringify(prefs));
+  };
+
+  const persistPreferencesToBackend = async (profile, prefs) => {
+    if (!profile) return;
+    const userId = profile.id || profile.email;
+    if (!userId) return;
+    try {
+      await api.savePreferences({
+        user_id: userId,
+        budget: prefs?.budget,
+        rentAsk: prefs?.budget,
+        cleanliness: prefs?.cleanliness || 'moderate',
+        sleepSchedule: prefs?.sleepSchedule || 'flexible',
+        interests: prefs?.interests || [],
+        city: prefs?.location || '',
+        major: prefs?.major || ''
+      });
+    } catch (err) {
+      console.error('Failed to save preferences to backend', err);
+    }
+  };
+
   // Load user data
   useEffect(() => {
     const savedProfile = localStorage.getItem('rently_user_profile');
-    const savedPreferences = localStorage.getItem('rently_user_preferences');
-    
-    if (savedProfile) setUserProfile(JSON.parse(savedProfile));
-    if (savedPreferences) setUserPreferences(JSON.parse(savedPreferences));
+    if (savedProfile) {
+      const parsedProfile = JSON.parse(savedProfile);
+      // Ensure id is present; fall back to email if missing
+      const normalizedProfile = parsedProfile?.id ? parsedProfile : { ...parsedProfile, id: parsedProfile?.email };
+      setUserProfile(normalizedProfile);
+      const prefs = loadPreferencesFor(normalizedProfile);
+      if (prefs) setUserPreferences(prefs);
+    } else {
+      const legacyPrefs = loadPreferencesFor(null);
+      if (legacyPrefs) setUserPreferences(legacyPrefs);
+    }
   }, []);
 
   // Save user data
@@ -45,17 +89,36 @@ function App() {
     }
   }, [userProfile]);
 
+  const clearUserLocalData = () => {
+    localStorage.removeItem('rently_matches');
+    localStorage.removeItem('rently_passes');
+    localStorage.removeItem('rently_saved_properties');
+    localStorage.removeItem('rently_conversations');
+    // keep preferences; they are namespaced per user
+  };
+
   const handleLoginSuccess = (userData) => {
-    setUserProfile(userData);
-    const savedPreferences = localStorage.getItem('rently_user_preferences');
-    if (savedPreferences) {
-      setCurrentView('dashboard');
+    clearUserLocalData(); // clear non-namespaced data from prior user
+    const normalizedUser = userData?.id ? userData : { ...userData, id: userData?.email };
+    setUserProfile(normalizedUser);
+    const prefs = loadPreferencesFor(normalizedUser);
+    if (prefs) {
+      setUserPreferences(prefs);
+      persistPreferencesToBackend(normalizedUser, prefs);
     } else {
-      setCurrentView('profile-setup');
+      const emptyPrefs = {
+        budget: null,
+        location: null,
+        sleepSchedule: null,
+        numRoommates: null
+      };
+      setUserPreferences(emptyPrefs);
     }
+    setCurrentView('dashboard'); // go straight to account after sign-in
   };
 
   const handleLogout = () => {
+    clearUserLocalData();
     localStorage.removeItem('rently_user_profile');
     setUserProfile(null);
     setCurrentView('selection');
@@ -64,7 +127,7 @@ function App() {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'selection':
-        return <UserTypeSelection onUserTypeSelect={(type) => { setUserType(type); setCurrentView('login'); }} onShowSignup={() => setCurrentView('signup-selection')} />;
+        return <UserTypeSelection mode="login" onUserTypeSelect={(type) => { setUserType(type); setCurrentView('login'); }} onShowSignup={() => setCurrentView('signup-selection')} />;
       case 'login':
         return <LoginForm userType={userType} onBack={() => setCurrentView('selection')} onLoginSuccess={handleLoginSuccess} onShowSignup={() => setCurrentView('signup-selection')} />;
       case 'signup-selection':
@@ -78,7 +141,19 @@ function App() {
       case 'location-preference':
         return <LocationPreference userPreferences={userPreferences} setUserPreferences={setUserPreferences} onNext={() => setCurrentView('sleep-schedule')} onBack={() => setCurrentView('budget-preference')} />;
       case 'sleep-schedule':
-        return <SleepSchedule userPreferences={userPreferences} setUserPreferences={setUserPreferences} onNext={() => { localStorage.setItem('rently_user_preferences', JSON.stringify(userPreferences)); setCurrentView('dashboard'); }} onBack={() => setCurrentView('location-preference')} />;
+        return <SleepSchedule
+          userPreferences={userPreferences}
+          setUserPreferences={setUserPreferences}
+          onNext={async (prefs) => {
+            const nextPrefs = prefs || userPreferences;
+            setUserPreferences(nextPrefs);
+            savePreferencesFor(userProfile, nextPrefs);
+            // Persist to backend so roommate matching works
+            await persistPreferencesToBackend(userProfile, nextPrefs);
+            setCurrentView('dashboard');
+          }}
+          onBack={() => setCurrentView('location-preference')}
+        />;
       
       // MAIN APP VIEWS
       case 'dashboard':
@@ -86,7 +161,7 @@ function App() {
       case 'browse-properties':
         return <BrowseProperties onBack={() => setCurrentView('dashboard')} userPreferences={userPreferences} onNavigate={setCurrentView} />;
       case 'roommate-matching':
-        return <RoommateMatching onBack={() => setCurrentView('dashboard')} userPreferences={userPreferences} onNavigate={setCurrentView} />;
+        return <RoommateMatching onBack={() => setCurrentView('dashboard')} userProfile={userProfile} userPreferences={userPreferences} onNavigate={setCurrentView} />;
       case 'messages':
         return <Messages onBack={() => setCurrentView('dashboard')} />;
       case 'saved-properties':
@@ -95,6 +170,15 @@ function App() {
         return <CanadaRentMap onBack={() => setCurrentView('dashboard')} />;
       case 'offer-evaluator':
         return <OfferEvaluator onBack={() => setCurrentView('dashboard')} />;
+      case 'settings':
+        return <SettingsPage
+          userProfile={userProfile}
+          onBack={() => setCurrentView('dashboard')}
+          onSavePrefs={(prefs) => {
+            setUserPreferences(prefs);
+            localStorage.setItem(`rently_user_preferences_${userProfile?.id || userProfile?.email || 'anon'}`, JSON.stringify(prefs));
+          }}
+        />;
       default:
         return <Dashboard userProfile={userProfile} userPreferences={userPreferences} onNavigate={setCurrentView} />;
     }
