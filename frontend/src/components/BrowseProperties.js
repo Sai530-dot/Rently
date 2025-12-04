@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 import realListings from '../data/real_listings.json';
 import craigslistData from '../data/craigslist_listings.json';
 import kijijiData from '../data/kijiji_listings.json';
@@ -170,7 +171,7 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
     console.log('🔄 Fetching properties...');
     
     // Using .then().catch() avoids the try/catch syntax error completely
-    fetch('http://localhost:5000/api/properties')
+    fetch(`${API_BASE_URL}/properties`)
       .then(response => {
         console.log('📡 Response status:', response.status);
         return response.json();

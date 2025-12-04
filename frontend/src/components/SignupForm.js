@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 import { api } from '../services/api';
 
 const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
@@ -25,7 +26,7 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
 
   const loadUniversities = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/universities/');
+      const response = await fetch(`${API_BASE_URL}/universities/`);
       const data = await response.json();
 
       if (data.status === 'success') {

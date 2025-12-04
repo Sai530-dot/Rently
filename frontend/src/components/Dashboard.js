@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 import realListings from '../data/real_listings.json';
 import craigslistData from '../data/craigslist_listings.json';
 import kijijiData from '../data/kijiji_listings.json';
@@ -96,7 +97,7 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/properties');
+        const response = await fetch(`${API_BASE_URL}/properties`);
         const data = await response.json();
         if (data.success && data.properties) {
           setAllListings(data.properties);

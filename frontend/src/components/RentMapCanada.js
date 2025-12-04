@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { API_BASE_URL } from '../config';
 import realListings from '../data/real_listings.json';
 import craigslistData from '../data/craigslist_listings.json';
 import kijijiData from '../data/kijiji_listings.json';
 
 const FALLBACK_LISTINGS = [...craigslistData, ...kijijiData, ...realListings];
-const API_ENDPOINT = 'http://localhost:5000/api/properties';
+const API_ENDPOINT = `${API_BASE_URL}/properties`;
 const GEOAPIFY_KEY = process.env.REACT_APP_GEOAPIFY_API_KEY;
 
 const deriveCity = (address = '') => address.split(',')[0]?.trim() || 'Unknown';

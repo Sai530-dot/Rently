@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '../config';
 
 const OfferEvaluator = ({ onBack }) => {
   const [formData, setFormData] = useState({
@@ -185,7 +186,7 @@ const OfferEvaluator = ({ onBack }) => {
 
     try {
       // Call backend ML API
-      const response = await fetch('http://localhost:5000/api/offer-evaluation/evaluate', {
+      const response = await fetch(`${API_BASE_URL}/offer-evaluation/evaluate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

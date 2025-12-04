@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 import realListings from './data/real_listings.json';
 
 // Position mapping for visualization
@@ -37,7 +38,7 @@ const RentMapScrollable = ({ onBack, userPreferences }) => {
   const fetchRentData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/rent-map?city=${selectedCity}&bedrooms=1`);
+      const response = await fetch(`${API_BASE_URL}/rent-map?city=${selectedCity}&bedrooms=1`);
       const data = await response.json();
       
       if (data.success) {
