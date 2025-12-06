@@ -1,6 +1,7 @@
+import base64
 import json
-import requests
 import os
+import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
@@ -47,16 +48,46 @@ CITY_RENT_DATA = {
     "victoria": 2100
 }
 
-# Initialize Firebase
-try:
+def _load_firebase_credentials():
+    """
+    Try to load Firebase credentials from a few sources:
+    1) FIREBASE_SERVICE_KEY env var (raw JSON or base64-encoded JSON)
+    2) firebase-service-key.json file shipped with the code (for local dev)
+    """
+    # 1) Env var as JSON or base64(JSON)
+    raw_env = os.getenv('FIREBASE_SERVICE_KEY')
+    if raw_env:
+        try:
+            return credentials.Certificate(json.loads(raw_env))
+        except json.JSONDecodeError:
+            try:
+                decoded = base64.b64decode(raw_env).decode('utf-8')
+                return credentials.Certificate(json.loads(decoded))
+            except Exception:
+                pass  # fall through to file-based loading
+
+    # 2) Local file (dev)
     cred_path = os.path.join(os.path.dirname(__file__), '..', 'firebase-service-key.json')
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred)
-    print("Firebase initialized successfully!")
-except ValueError:
-    print("Firebase already initialized")
-except Exception as e:
-    print(f"Firebase init error: {e}")
+    if os.path.exists(cred_path):
+        return credentials.Certificate(cred_path)
+
+    return None
+
+
+def init_firebase():
+    """Initialize firebase_admin once, or return the already initialized app."""
+    try:
+        return firebase_admin.get_app()
+    except ValueError:
+        cred = _load_firebase_credentials()
+        if not cred:
+            print("Firebase credentials not provided; signup endpoints will fail until configured.")
+            return None
+        return firebase_admin.initialize_app(cred)
+
+
+# Initialize at import time so serverless cold starts are handled
+firebase_app = init_firebase()
 
 
 # views.py (Updated student_signup)
@@ -70,6 +101,13 @@ def student_signup(request):
             password = data['password']
             name = data.get('name', '')
             university = data.get('university', '')
+
+            app = firebase_app or init_firebase()
+            if not app:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Firebase is not configured on the server. Please add FIREBASE_SERVICE_KEY env var or firebase-service-key.json.'
+                }, status=500)
 
             # DEBUG PRINT
             print(f"Attempting signup for: {email}")
@@ -144,6 +182,13 @@ def landlord_signup(request):
             password = data['password']
             name = data.get('name', '')
             phone = data.get('phone', '')
+
+            app = firebase_app or init_firebase()
+            if not app:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Firebase is not configured on the server. Please add FIREBASE_SERVICE_KEY env var or firebase-service-key.json.'
+                }, status=500)
 
             # 1. Create user in Firebase
             try:
