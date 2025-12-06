@@ -5,3 +5,4 @@ django-cors-headers==4.3.1
 dj-database-url==2.3.0
 psycopg2-binary==2.9.9
 whitenoise==6.7.0
+pysqlite3-binary==0.5.3

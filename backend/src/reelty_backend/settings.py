@@ -2,6 +2,16 @@ import os
 from pathlib import Path
 import dj_database_url
 
+# Fallback SQLite shim for environments without system sqlite3 (e.g., Vercel build image)
+try:
+    import pysqlite3  # type: ignore
+    import sys
+
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except Exception:
+    # If pysqlite3 is not installed, keep default import path
+    pass
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'your-secret-key-for-now-12345'
