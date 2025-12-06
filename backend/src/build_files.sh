@@ -13,8 +13,13 @@ $PYTHON_BIN -m ensurepip --upgrade || true
 $PYTHON_BIN -m pip install --upgrade pip
 $PYTHON_BIN -m pip install -r requirements.txt
 
-# Run migrations (optional, but good to ensure DB connectivity)
-# python3 manage.py migrate --noinput
+# Run migrations when a real database is configured
+if [ -n "$DATABASE_URL" ]; then
+  echo "Running migrations against DATABASE_URL..."
+  $PYTHON_BIN manage.py migrate --noinput
+else
+  echo "Skipping migrations (DATABASE_URL not set; using ephemeral /tmp sqlite)."
+fi
 
 # Collect static files
 echo "Collecting static files..."
