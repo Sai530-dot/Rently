@@ -39,10 +39,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'reelty_backend.urls'
 
+sqlite_name = os.environ.get("SQLITE_NAME", "db.sqlite3")
+# Default to /tmp for writeable sqlite on serverless; override with DATABASE_URL for persistent DB.
+default_sqlite_path = Path(os.environ.get("SQLITE_PATH", "/tmp")) / sqlite_name
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': default_sqlite_path,
     }
 }
 
