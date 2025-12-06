@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,6 +36,13 @@ DATABASES = {
     }
 }
 
+# Override database configuration if DATABASE_URL is provided (e.g., Postgres on Vercel)
+if 'DATABASE_URL' in os.environ:
+    DATABASES['default'] = dj_database_url.config(
+        conn_max_age=600,
+        conn_health_checks=True
+    )
+
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # CORS settings for frontend
@@ -47,4 +55,5 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles_build" / "static"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

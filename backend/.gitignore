@@ -2,6 +2,7 @@
 firebase-service-key.json
 *.json
 backend/src/firebase-service-key.json
+!vercel.json
 
 # Environment variables
 .env
