@@ -205,7 +205,13 @@ const SavedProperties = ({ onBack, onNavigate }) => {
       )}
 
       <style>{`
-        .saved-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .saved-container { 
+          max-width: 1000px; 
+          margin: 0 auto; 
+          padding: 20px; 
+          /* Added min-height to push footer down */
+          min-height: 80vh;
+        }
         .saved-header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; }
         .back-btn { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; }
         
