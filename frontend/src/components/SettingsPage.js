@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { api } from '../services/api';
 
 const SettingsPage = ({ userProfile, onBack, onSavePrefs }) => {
@@ -59,7 +59,7 @@ const SettingsPage = ({ userProfile, onBack, onSavePrefs }) => {
   return (
     <div className="settings-page">
       <div className="settings-header-row">
-        <button className="text-btn" onClick={onBack}>← Back</button>
+        <button className="back-btn" onClick={onBack}>&larr; Back</button>
         <h2>Edit profile</h2>
       </div>
 
@@ -106,6 +106,7 @@ const SettingsPage = ({ userProfile, onBack, onSavePrefs }) => {
       <style>{`
         .settings-page { max-width: 720px; margin: 0 auto; padding: 24px; font-family: 'Inter', sans-serif; }
         .settings-header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .back-btn { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; }
         .settings-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border: 1px solid #f1f1f1; display: flex; flex-direction: column; gap: 12px; }
         .row { display: flex; align-items: center; gap: 16px; }
         .avatar-large { width: 80px; height: 80px; border-radius: 18px; overflow: hidden; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }

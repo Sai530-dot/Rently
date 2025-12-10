@@ -55,7 +55,7 @@ const SavedProperties = ({ onBack, onNavigate }) => {
   return (
     <div className="saved-container">
       <div className="saved-header">
-        <button className="back-btn" onClick={onBack}>← Back</button>
+        <button className="back-btn" onClick={onBack}>← &larr; Back</button>
         <h2>Saved Items</h2>
       </div>
 
