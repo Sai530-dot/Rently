@@ -75,14 +75,9 @@ const Footer = () => {
           background: linear-gradient(135deg, #2d3436 0%, #1e272e 100%);
           color: white;
           padding: 40px 20px 20px;
-          
-          /* LOWER IT A LOT: Pushes the footer down from the content above */
           margin-top: 120px;
-
-          /* FILL LEFT SPACE: Pulls the footer to the left to cover the nav bar gap */
           margin-left: -85px; 
           width: calc(100% + 85px); 
-          
           position: relative;
           z-index: 10;
         }
@@ -161,7 +156,7 @@ const Footer = () => {
           justify-content: center;
           width: 40px;
           height: 40px;
-          border-radius: 50%; /* Circle shape */
+          border-radius: 50%;
           background-color: rgba(255, 255, 255, 0.1);
           color: white;
           transition: all 0.3s ease;
@@ -174,7 +169,7 @@ const Footer = () => {
         }
 
         .social-icon:hover {
-          background-color: #fd5068; /* Brand color on hover */
+          background-color: #fd5068;
           transform: translateY(-3px);
           box-shadow: 0 4px 12px rgba(253, 80, 104, 0.4);
           border-color: transparent;
@@ -197,13 +192,10 @@ const Footer = () => {
           }
         }
         
-        @media (max-width: 600px) {
-          .footer-container {
-            grid-template-columns: 1fr;
-          }
+        /* === MOBILE OVERRIDE: HIDE FOOTER === */
+        @media (max-width: 768px) {
           .main-footer {
-             margin-left: 0;
-             width: 100%;
+             display: none;
           }
         }
       `}</style>

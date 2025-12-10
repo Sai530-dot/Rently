@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 
-const Icon = ({ path, size = 22 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+const Icon = ({ path, size = 22, className }) => (
+  <svg 
+    className={className} 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="1.8" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
     <path d={path} />
   </svg>
 );
@@ -15,7 +25,6 @@ const navItems = [
   { key: 'messages', label: 'Messages', icon: 'M4 6h16v10H7l-3 3z' },
   { key: 'saved-properties', label: 'Saved', icon: 'M12 20l-7-7a4 4 0 0 1 5.7-5.6L12 8.7l1.3-1.3A4 4 0 0 1 19 13z' },
   { key: 'settings', label: 'Settings', icon: 'M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.332.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.217.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.581-.495.644-.869l.214-1.28Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z' },
-  // RESTORED: Appearance toggle in the list
   { key: 'theme-toggle', label: 'Appearance', icon: 'M12 3v18M6 7a6 6 0 0 0 0 10m6-12a6 6 0 1 1 0 12' },
 ];
 
@@ -56,78 +65,133 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
     setShowProfileMenu(false);
   };
 
+  // Helper to get specific items for mobile bottom bar (usually roughly 4-5 items max)
+  const mobileNavKeys = ['dashboard', 'browse-properties', 'roommate-matching', 'messages'];
+  const mobileNavItems = navItems.filter(item => mobileNavKeys.includes(item.key));
+
   return (
     <nav className="main-nav-wrapper">
-      {/* --- FUNCTIONAL TOP BAR (Replaces old static bar) --- */}
-      <div className="top-navbar">
-        <div className="nav-brand" onClick={() => onNavigate('dashboard')}>
-          <span className="brand-name">Rently</span>
-          <span className="brand-tagline">Find Your Perfect Match</span>
-        </div>
-        
-        <div className="user-profile-snippet" onClick={handleProfileMenuToggle}>
-          <div className="greeting-text">Hi, {firstName}!</div>
-          <div className="user-avatar-circle">
-            {avatarUrl ? (
-              <img 
-                src={avatarUrl} 
-                alt="avatar" 
-                style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
-              />
-            ) : avatarLetter}
+      
+      {/* =========================================================
+          DESKTOP: TOP NAVBAR & SIDE RAIL
+          (Hidden on Mobile)
+      ========================================================== */}
+      
+      <div className="desktop-nav-group">
+        <div className="top-navbar">
+          <div className="nav-brand" onClick={() => onNavigate('dashboard')}>
+            <span className="brand-name">Rently</span>
+            <span className="brand-tagline">Find Your Perfect Match</span>
           </div>
           
-          {/* Dropdown Menu */}
-          {showProfileMenu && (
-            <div className="profile-menu light">
-              <div className="menu-header-info">
-                <div className="menu-name">{firstName}</div>
-                <div className="menu-role">Student</div>
-              </div>
-              <div className="menu-divider" />
-              <div className="menu-item" onClick={() => { onNavigate('settings'); setShowProfileMenu(false); }}>Settings</div>
-              <div className="menu-item" onClick={handleAppearanceToggle}>Switch appearance ({appearance})</div>
-              <div className="menu-item" onClick={() => { onNavigate('messages'); setShowProfileMenu(false); }}>Messages</div>
-              <div className="menu-item" onClick={() => { onNavigate('roommate-matching'); setShowProfileMenu(false); }}>Roommates</div>
+          <div className="user-profile-snippet" onClick={handleProfileMenuToggle}>
+            <div className="greeting-text">Hi, {firstName}!</div>
+            <div className="user-avatar-circle">
+              {avatarUrl ? (
+                <img 
+                  src={avatarUrl} 
+                  alt="avatar" 
+                  style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
+                />
+              ) : avatarLetter}
             </div>
-          )}
+            
+            {/* Desktop Dropdown (Drops Down) */}
+            {showProfileMenu && (
+              <div className="profile-menu light desktop-menu">
+                <div className="menu-header-info">
+                  <div className="menu-name">{firstName}</div>
+                  <div className="menu-role">Student</div>
+                </div>
+                <div className="menu-divider" />
+                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onNavigate('settings'); setShowProfileMenu(false); }}>Settings</div>
+                <div className="menu-item" onClick={(e) => { e.stopPropagation(); handleAppearanceToggle(); }}>Switch appearance ({appearance})</div>
+                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onNavigate('messages'); setShowProfileMenu(false); }}>Messages</div>
+                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onNavigate('roommate-matching'); setShowProfileMenu(false); }}>Roommates</div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* --- SIDE RAIL --- */}
-      <div className="nav-rail">
-        {navItems.map(item => {
-          // Special rendering for the theme toggle button
-          if (item.key === 'theme-toggle') {
+        <div className="nav-rail">
+          {navItems.map(item => {
+            if (item.key === 'theme-toggle') {
+              return (
+                <button
+                  key={item.key}
+                  className="rail-btn"
+                  onClick={() => { if (onToggleAppearance) onToggleAppearance(); }}
+                  title={item.label}
+                >
+                  <Icon path={item.icon} />
+                  <span className="sr-only">{item.label}</span>
+                </button>
+              );
+            }
             return (
               <button
                 key={item.key}
-                className="rail-btn"
-                onClick={() => { if (onToggleAppearance) onToggleAppearance(); }}
+                className={`rail-btn ${currentView === item.key ? 'active' : ''}`}
+                onClick={() => onNavigate(item.key)}
                 title={item.label}
               >
                 <Icon path={item.icon} />
                 <span className="sr-only">{item.label}</span>
               </button>
             );
-          }
-          return (
-            <button
-              key={item.key}
-              className={`rail-btn ${currentView === item.key ? 'active' : ''}`}
-              onClick={() => onNavigate(item.key)}
-              title={item.label}
-            >
-              <Icon path={item.icon} />
-              <span className="sr-only">{item.label}</span>
-            </button>
-          );
-        })}
-        <div className="rail-spacer" />
-        <button className="rail-btn danger" onClick={onLogout} title="Logout">
-          <Icon path="M10 4h4v4h-4z M5 12h9M5 12l3-3m-3 3 3 3" />
-          <span className="sr-only">Logout</span>
-        </button>
+          })}
+          <div className="rail-spacer" />
+          <button className="rail-btn danger" onClick={onLogout} title="Logout">
+            <Icon path="M10 4h4v4h-4z M5 12h9M5 12l3-3m-3 3 3 3" />
+            <span className="sr-only">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* =========================================================
+          MOBILE: BOTTOM NAVIGATION BAR
+          (Visible only on screens < 768px)
+      ========================================================== */}
+      
+      <div className="mobile-bottom-nav">
+        {/* Mobile Nav Items */}
+        {mobileNavItems.map(item => (
+          <button 
+            key={item.key} 
+            className={`mobile-nav-btn ${currentView === item.key ? 'active' : ''}`}
+            onClick={() => onNavigate(item.key)}
+          >
+            <Icon path={item.icon} size={24} />
+          </button>
+        ))}
+
+        {/* Profile Avatar as the last item on Mobile */}
+        <div className="mobile-profile-container">
+          <button 
+            className="mobile-nav-btn profile-btn"
+            onClick={handleProfileMenuToggle}
+          >
+             <div className="mobile-avatar-circle">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="avatar" />
+              ) : avatarLetter}
+            </div>
+          </button>
+
+          {/* Mobile Menu (Pops Up) */}
+          {showProfileMenu && (
+             <div className="profile-menu light mobile-menu-popup">
+                <div className="menu-header-info">
+                  <div className="menu-name">{firstName}</div>
+                  <div className="menu-role">Student</div>
+                </div>
+                <div className="menu-divider" />
+                <div className="menu-item" onClick={() => { onNavigate('settings'); setShowProfileMenu(false); }}>Settings</div>
+                <div className="menu-item" onClick={handleAppearanceToggle}>Switch appearance</div>
+                <div className="menu-item" onClick={onLogout} style={{color: '#ef4444'}}>Logout</div>
+             </div>
+          )}
+        </div>
       </div>
 
       <style>{`
@@ -137,7 +201,7 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
           z-index: 1000;
         }
 
-        /* --- TOP NAVBAR STYLES --- */
+        /* --- DESKTOP STYLES --- */
         .top-navbar {
           height: 60px;
           background: linear-gradient(90deg, #fd5068 0%, #ff6b9d 100%);
@@ -151,104 +215,8 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
           box-sizing: border-box;
         }
 
-        .nav-brand {
-          display: flex;
-          align-items: baseline;
-          gap: 12px;
-          cursor: pointer;
-        }
-        .nav-brand:hover { opacity: 0.9; }
-
-        .brand-name {
-          font-size: 1.5rem;
-          font-weight: 800;
-          letter-spacing: -0.5px;
-        }
-
-        .brand-tagline {
-          font-size: 0.85rem;
-          opacity: 0.9;
-          font-weight: 500;
-        }
-
-        .user-profile-snippet { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px; 
-          cursor: pointer; 
-          position: relative; 
-          padding: 4px 8px;
-          border-radius: 8px;
-          transition: background 0.2s;
-        }
-        
-        .user-profile-snippet:hover {
-          background: rgba(255,255,255,0.15);
-        }
-
-        .greeting-text {
-          font-weight: 600;
-          font-size: 0.95rem;
-        }
-
-        .user-avatar-circle { 
-          width: 36px; 
-          height: 36px; 
-          background: rgba(255,255,255,0.3); 
-          border-radius: 50%; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          font-weight: 700; 
-          color: white; 
-          border: 2px solid rgba(255,255,255,0.8);
-          overflow: hidden; 
-        }
-
-        /* --- DROPDOWN MENU --- */
-        .profile-menu { 
-          position: absolute; 
-          right: 0; 
-          top: 55px; 
-          width: 220px; 
-          background: white; 
-          color: #0f172a; 
-          border-radius: 12px; 
-          box-shadow: 0 10px 40px rgba(0,0,0,0.12); 
-          padding: 8px 0; 
-          z-index: 1050; 
-          border: 1px solid rgba(0,0,0,0.08);
-          animation: fadeIn 0.15s ease-out;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-5px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .menu-header-info {
-          padding: 12px 16px 8px 16px;
-        }
-        .menu-name { font-weight: 700; font-size: 0.95rem; color: #111827; }
-        .menu-role { font-size: 0.8rem; color: #6B7280; }
-
-        .menu-item { 
-          padding: 10px 16px; 
-          cursor: pointer; 
-          display: flex; 
-          align-items: center; 
-          font-size: 0.9rem; 
-          font-weight: 500;
-          color: #374151;
-          transition: background 0.1s;
-        }
-        .menu-item:hover { background: #F3F4F6; color: #fd5068; }
-        .menu-divider { height: 1px; background: #E5E7EB; margin: 6px 0; }
-
-        /* --- NAV RAIL --- */
         .nav-rail {
           position: fixed;
-          /* RESTORED: Top position to 170px as requested */
           top: 170px; 
           left: 10px;
           width: 54px;
@@ -261,18 +229,48 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
           gap: 10px;
           z-index: 900;
         }
-        .rail-btn {
-          width: 38px;
-          height: 38px;
-          border-radius: 12px;
-          border: none;
-          background: transparent;
-          color: #0f172a;
-          display: grid;
-          place-items: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
+
+        .desktop-only { display: block; }
+        .mobile-bottom-nav { display: none; } /* Hidden by default */
+
+        /* --- SHARED STYLES --- */
+        .nav-brand { display: flex; align-items: baseline; gap: 12px; cursor: pointer; }
+        .nav-brand:hover { opacity: 0.9; }
+        .brand-name { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-tagline { font-size: 0.85rem; opacity: 0.9; font-weight: 500; }
+        .user-profile-snippet { display: flex; align-items: center; gap: 12px; cursor: pointer; position: relative; padding: 4px 8px; border-radius: 8px; transition: background 0.2s; }
+        .user-profile-snippet:hover { background: rgba(255,255,255,0.15); }
+        .greeting-text { font-weight: 600; font-size: 0.95rem; }
+        .user-avatar-circle { width: 36px; height: 36px; background: rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; border: 2px solid rgba(255,255,255,0.8); overflow: hidden; }
+
+        .profile-menu { 
+          position: absolute; 
+          background: white; 
+          color: #0f172a; 
+          border-radius: 12px; 
+          box-shadow: 0 10px 40px rgba(0,0,0,0.12); 
+          padding: 8px 0; 
+          z-index: 1050; 
+          border: 1px solid rgba(0,0,0,0.08);
+          animation: fadeIn 0.15s ease-out;
+          width: 220px; 
         }
+
+        .desktop-menu { right: 0; top: 55px; }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .menu-header-info { padding: 12px 16px 8px 16px; }
+        .menu-name { font-weight: 700; font-size: 0.95rem; color: #111827; }
+        .menu-role { font-size: 0.8rem; color: #6B7280; }
+        .menu-item { padding: 10px 16px; cursor: pointer; display: flex; align-items: center; font-size: 0.9rem; font-weight: 500; color: #374151; transition: background 0.1s; }
+        .menu-item:hover { background: #F3F4F6; color: #fd5068; }
+        .menu-divider { height: 1px; background: #E5E7EB; margin: 6px 0; }
+
+        .rail-btn { width: 38px; height: 38px; border-radius: 12px; border: none; background: transparent; color: #0f172a; display: grid; place-items: center; cursor: pointer; transition: all 0.2s ease; }
         .rail-btn:hover { background: rgba(0,0,0,0.06); color: #111827; }
         .rail-btn.active { background: #111827; color: white; box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
         .rail-btn.danger { color: #ef4444; }
@@ -280,15 +278,100 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
         .rail-spacer { flex: 1; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-        /* Dark mode rail override */
+        /* Dark mode overrides */
         .dark-mode .nav-rail { background: #0f172a; box-shadow: 0 18px 38px rgba(0,0,0,0.35); }
         .dark-mode .rail-btn { color: #e5e7eb; }
         .dark-mode .rail-btn.active { background: #2563eb; }
 
+        /* =========================================================
+           MOBILE STYLES (Max-width 768px)
+        ========================================================== */
         @media (max-width: 768px) {
-          .brand-tagline { display: none; }
-          .top-navbar { padding: 0 20px; }
-          .greeting-text { display: none; }
+          /* Hide Desktop Nav Elements */
+          .desktop-nav-group { display: none; }
+
+          /* Show Bottom Nav */
+          .mobile-bottom-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            height: 65px;
+            background: white;
+            border-radius: 35px; /* Rounded pill shape */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            z-index: 2000;
+            padding: 0 10px;
+            box-sizing: border-box;
+          }
+
+          .mobile-nav-btn {
+            background: none;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            transition: all 0.2s;
+          }
+
+          .mobile-nav-btn.active {
+            color: #fd5068;
+            background: #fff0f3;
+          }
+
+          .mobile-nav-btn:hover {
+            color: #fd5068;
+          }
+
+          /* Profile on Mobile */
+          .mobile-profile-container {
+            position: relative;
+          }
+
+          .mobile-avatar-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #64748b;
+            border: 2px solid transparent;
+          }
+          
+          .mobile-nav-btn.profile-btn:hover .mobile-avatar-circle {
+            border-color: #fd5068;
+          }
+
+          .mobile-avatar-circle img {
+             width: 100%; height: 100%; object-fit: cover;
+          }
+
+          /* Mobile Menu Popup (Upwards) */
+          .mobile-menu-popup {
+            bottom: 75px; /* Position above bottom bar */
+            right: -10px;
+            top: auto;
+            transform-origin: bottom right;
+            animation: popUp 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          }
+
+          @keyframes popUp {
+            from { opacity: 0; transform: scale(0.9) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+          }
         }
       `}</style>
     </nav>
