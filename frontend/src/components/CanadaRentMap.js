@@ -281,6 +281,51 @@ const CanadaRentMap = ({ onBack }) => {
         }
         .reset-view-btn:hover { transform: translateX(-50%) scale(1.05); }
 
+        /* --- DARK MODE OVERRIDES --- */
+        .dark-mode .canada-rent-map-wrapper { background: #0b1224; }
+        .dark-mode .map-header { background: #0f172a; border-bottom: 1px solid rgba(255,255,255,0.08); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+        .dark-mode .header-top h1 { color: #e5e7eb; }
+        .dark-mode .back-btn { background: #0b1224; border-color: rgba(255,255,255,0.12); color: #e5e7eb; }
+        .dark-mode .search-input-wrapper { background: #0b1224; border-radius: 20px; border: 1px solid rgba(255,255,255,0.12); }
+        .dark-mode .search-input { background: transparent; color: #e5e7eb; border: none; }
+        .dark-mode .search-icon, .dark-mode .clear-search { color: #9ca3af; }
+        .dark-mode .autocomplete-dropdown { background: #0f172a; border-color: rgba(255,255,255,0.12); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+        .dark-mode .autocomplete-item { color: #e5e7eb; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .dark-mode .autocomplete-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .dark-mode .controls-row { color: #e5e7eb; }
+        .dark-mode .filter-btn { background: #0b1224; color: #e5e7eb; border-color: rgba(255,255,255,0.12); }
+        .dark-mode .filter-btn.active { background: #2563eb; border-color: #2563eb; }
+        .dark-mode .stats-bar { background: #0b1224; color: #e5e7eb; border: 1px solid rgba(255,255,255,0.12); }
+
+        .dark-mode .main-content { background: #0b1224; }
+        .dark-mode .list-pane { background: #0f172a; border-right: 1px solid rgba(255,255,255,0.08); }
+        .dark-mode .list-content { background: #0f172a; }
+        .dark-mode .list-footer-wrapper { background: #0b1224; color: #9ca3af; }
+        .dark-mode .listing-card-horizontal { background: #0b1224; border-color: rgba(255,255,255,0.08); color: #e5e7eb; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+        .dark-mode .listing-card-horizontal:hover { border-color: rgba(255,255,255,0.2); }
+        .dark-mode .listing-card-horizontal.selected { border-color: #60a5fa; background: #0f172a; }
+        .dark-mode .card-image-wrapper { background: #111827; }
+        .dark-mode .emoji-placeholder { background: #1f2937; color: #e5e7eb; }
+        .dark-mode .price-badge-small { background: rgba(0,0,0,0.6); }
+        .dark-mode .card-top h3 { color: #e5e7eb; }
+        .dark-mode .rent-highlight { color: #f472b6; }
+        .dark-mode .address-text, .dark-mode .specs-row { color: #cbd5e1; }
+
+        .dark-mode .map-pane { background: #0b1224; }
+        .dark-mode .reset-view-btn { background: #0f172a; color: #e5e7eb; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+
+        /* Leaflet tiles & controls */
+        .dark-mode .leaflet-pane .leaflet-tile { filter: grayscale(0.2) invert(0.9) brightness(0.6) saturate(0.8); }
+        .dark-mode .leaflet-control-container .leaflet-top .leaflet-control,
+        .dark-mode .leaflet-control-container .leaflet-left .leaflet-control {
+          background: #0f172a;
+          color: #e5e7eb;
+          border: 1px solid rgba(255,255,255,0.2);
+          box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+        }
+        .dark-mode .leaflet-bar a { color: #e5e7eb; }
+        .dark-mode .leaflet-bar a:hover { background: rgba(255,255,255,0.08); }
+
         @media (max-width: 900px) {
           .canada-rent-map-wrapper { position: relative; top: 0; height: auto; }
           .main-content { flex-direction: column; }

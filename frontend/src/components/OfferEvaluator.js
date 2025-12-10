@@ -1064,6 +1064,28 @@ const OfferEvaluator = ({ onBack }) => {
           color: white;
         }
 
+        .dark-mode .evaluator-shell { background: #0b1224; color: #e5e7eb; }
+        .dark-mode .filters-card,
+        .dark-mode .section-card,
+        .dark-mode .score-card,
+        .dark-mode .details-card,
+        .dark-mode .card-base {
+          background: #0f172a;
+          color: #e5e7eb;
+          border-color: rgba(255,255,255,0.1);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+        .dark-mode .form-row input,
+        .dark-mode .form-row select {
+          background: #0b1224;
+          color: #e5e7eb;
+          border-color: rgba(255,255,255,0.15);
+        }
+        .dark-mode .cost-item { border-bottom-color: rgba(255,255,255,0.1); }
+        .dark-mode .cost-item.total { border-top-color: #fd5068; }
+        .dark-mode .details-card h4 { color: #e5e7eb; }
+        .dark-mode .details-card li { color: #cbd5e1; }
+
         @media (max-width: 1024px) {
           .evaluator-content {
             grid-template-columns: 1fr;

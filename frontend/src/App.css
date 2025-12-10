@@ -1,15 +1,19 @@
 /* App Container - Website Layout */
 .app-container {
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--light-gray);
   transition: background-color 0.3s ease;
 }
 
 /* Main content area for logged-in users */
 .main-content {
-  background: #f5f7fa;
+  background: var(--light-gray);
   min-height: calc(100vh - 70px);
   padding: 0;
+}
+
+.has-rail .main-content {
+  padding-left: 80px;
 }
 
 /* Auth container for login/signup pages */

@@ -1,6 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const Navigation = ({ userProfile, currentView, onNavigate, onLogout }) => {
+const Icon = ({ path, size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d={path} />
+  </svg>
+);
+
+const navItems = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'M3 11.5 12 3l9 8.5V21H3z' },
+  { key: 'browse-properties', label: 'Properties', icon: 'M4 5h16v14H4z M4 9h16' },
+  { key: 'roommate-matching', label: 'Roommates', icon: 'M8 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm8 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19.5c0-2.2 2.7-3.5 5-3.5s5 1.3 5 3.5M11 19.5c0-2.2 2.7-3.5 5-3.5s5 1.3 5 3.5' },
+  { key: 'rent-map', label: 'Rent Map', icon: 'M6 3l5 2 7-2v16l-7 2-5-2V3Zm5 2v16' },
+  { key: 'offer-evaluator', label: 'Evaluate', icon: 'M6 4h12M9 8h6M8 12h8M10 16h4' },
+  { key: 'messages', label: 'Messages', icon: 'M4 6h16v10H7l-3 3z' },
+  { key: 'saved-properties', label: 'Saved', icon: 'M12 20l-7-7a4 4 0 0 1 5.7-5.6L12 8.7l1.3-1.3A4 4 0 0 1 19 13z' },
+  { key: 'settings', label: 'Settings', icon: 'M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.332.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.217.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.581-.495.644-.869l.214-1.28Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z' },
+  // RESTORED: Appearance toggle in the list
+  { key: 'theme-toggle', label: 'Appearance', icon: 'M12 3v18M6 7a6 6 0 0 0 0 10m6-12a6 6 0 1 1 0 12' },
+];
+
+const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAppearance, appearance }) => {
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  
   const isLoggedIn = userProfile !== null;
   const isDashboardView = currentView === 'dashboard' || 
                           currentView === 'roommate-matching' || 
@@ -8,214 +29,266 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout }) => {
                           currentView === 'offer-evaluator' || 
                           currentView === 'messages' || 
                           currentView === 'saved-properties' ||
-                          currentView === 'browse-properties';
+                          currentView === 'browse-properties' ||
+                          currentView === 'settings';
 
-  if (!isLoggedIn) return null;
-  if (!isDashboardView) return null;
+  if (!isLoggedIn || !isDashboardView) return null;
+
+  const effectiveUserId = userProfile?.id || userProfile?.email || 'anon';
+  const storedAvatar = (() => {
+    try {
+      const raw = localStorage.getItem(`rently_profile_form_${effectiveUserId}`);
+      if (raw) return JSON.parse(raw)?.avatar || '';
+    } catch (e) { /* ignore */ }
+    return '';
+  })();
+
+  const avatarLetter = (userProfile?.firstName || 'User')[0]?.toUpperCase();
+  const avatarUrl = userProfile?.avatar || storedAvatar;
+  const firstName = userProfile?.firstName || 'Student';
+
+  const handleProfileMenuToggle = () => {
+    setShowProfileMenu((prev) => !prev);
+  };
+
+  const handleAppearanceToggle = () => {
+    if (onToggleAppearance) onToggleAppearance();
+    setShowProfileMenu(false);
+  };
 
   return (
-    <nav className="main-nav">
-      <div className="nav-container">
+    <nav className="main-nav-wrapper">
+      {/* --- FUNCTIONAL TOP BAR (Replaces old static bar) --- */}
+      <div className="top-navbar">
         <div className="nav-brand" onClick={() => onNavigate('dashboard')}>
-          <h1>Rently</h1>
-          <span className="tagline">Find Your Perfect Match</span>
+          <span className="brand-name">Rently</span>
+          <span className="brand-tagline">Find Your Perfect Match</span>
         </div>
-
-        <div className="nav-links">
-          <button 
-            className={`nav-link ${currentView === 'dashboard' ? 'active' : ''}`}
-            onClick={() => onNavigate('dashboard')}
-          >
-            Dashboard
-          </button>
-          <button 
-            className={`nav-link ${currentView === 'browse-properties' ? 'active' : ''}`}
-            onClick={() => onNavigate('browse-properties')}
-          >
-            Properties
-          </button>
-          <button 
-            className={`nav-link ${currentView === 'roommate-matching' ? 'active' : ''}`}
-            onClick={() => onNavigate('roommate-matching')}
-          >
-            Roommates
-          </button>
-          <button 
-            className={`nav-link ${currentView === 'rent-map' ? 'active' : ''}`}
-            onClick={() => onNavigate('rent-map')}
-          >
-            Map
-          </button>
-          <button 
-            className={`nav-link ${currentView === 'offer-evaluator' ? 'active' : ''}`}
-            onClick={() => onNavigate('offer-evaluator')}
-          >
-            Evaluate
-          </button>
-          <button 
-            className={`nav-link ${currentView === 'messages' ? 'active' : ''}`}
-            onClick={() => onNavigate('messages')}
-          >
-            Messages
-          </button>
-          <button 
-            className={`nav-link ${currentView === 'saved-properties' ? 'active' : ''}`}
-            onClick={() => onNavigate('saved-properties')}
-          >
-            Saved
-          </button>
-        </div>
-
-        <div className="nav-user">
-          <span className="user-greeting">Hi, {userProfile?.firstName}!</span>
-          <button className="logout-btn" onClick={onLogout}>
-            Logout
-          </button>
+        
+        <div className="user-profile-snippet" onClick={handleProfileMenuToggle}>
+          <div className="greeting-text">Hi, {firstName}!</div>
+          <div className="user-avatar-circle">
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="avatar" 
+                style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
+              />
+            ) : avatarLetter}
+          </div>
+          
+          {/* Dropdown Menu */}
+          {showProfileMenu && (
+            <div className="profile-menu light">
+              <div className="menu-header-info">
+                <div className="menu-name">{firstName}</div>
+                <div className="menu-role">Student</div>
+              </div>
+              <div className="menu-divider" />
+              <div className="menu-item" onClick={() => { onNavigate('settings'); setShowProfileMenu(false); }}>Settings</div>
+              <div className="menu-item" onClick={handleAppearanceToggle}>Switch appearance ({appearance})</div>
+              <div className="menu-item" onClick={() => { onNavigate('messages'); setShowProfileMenu(false); }}>Messages</div>
+              <div className="menu-item" onClick={() => { onNavigate('roommate-matching'); setShowProfileMenu(false); }}>Roommates</div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* --- SIDE RAIL --- */}
+      <div className="nav-rail">
+        {navItems.map(item => {
+          // Special rendering for the theme toggle button
+          if (item.key === 'theme-toggle') {
+            return (
+              <button
+                key={item.key}
+                className="rail-btn"
+                onClick={() => { if (onToggleAppearance) onToggleAppearance(); }}
+                title={item.label}
+              >
+                <Icon path={item.icon} />
+                <span className="sr-only">{item.label}</span>
+              </button>
+            );
+          }
+          return (
+            <button
+              key={item.key}
+              className={`rail-btn ${currentView === item.key ? 'active' : ''}`}
+              onClick={() => onNavigate(item.key)}
+              title={item.label}
+            >
+              <Icon path={item.icon} />
+              <span className="sr-only">{item.label}</span>
+            </button>
+          );
+        })}
+        <div className="rail-spacer" />
+        <button className="rail-btn danger" onClick={onLogout} title="Logout">
+          <Icon path="M10 4h4v4h-4z M5 12h9M5 12l3-3m-3 3 3 3" />
+          <span className="sr-only">Logout</span>
+        </button>
+      </div>
+
       <style>{`
-        .main-nav {
-          background: linear-gradient(135deg, #fd5068 0%, #ff6b9d 50%, #ff8a80 100%);
-          box-shadow: 0 4px 20px rgba(253, 80, 104, 0.25);
+        .main-nav-wrapper {
           position: sticky;
           top: 0;
           z-index: 1000;
-          backdrop-filter: blur(10px);
         }
 
-        .nav-container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 15px 30px;
+        /* --- TOP NAVBAR STYLES --- */
+        .top-navbar {
+          height: 60px;
+          background: linear-gradient(90deg, #fd5068 0%, #ff6b9d 100%);
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 30px;
+          padding: 0 40px;
+          color: white;
+          box-shadow: 0 4px 12px rgba(253, 80, 104, 0.2);
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .nav-brand {
           display: flex;
           align-items: baseline;
-          gap: 10px;
+          gap: 12px;
           cursor: pointer;
-          transition: opacity 0.3s ease;
+        }
+        .nav-brand:hover { opacity: 0.9; }
+
+        .brand-name {
+          font-size: 1.5rem;
+          font-weight: 800;
+          letter-spacing: -0.5px;
         }
 
-        .nav-brand:hover {
-          opacity: 0.9;
-        }
-
-        .nav-brand h1 {
-          margin: 0;
-          color: white;
-          font-size: 1.8rem;
-          font-weight: 700;
-        }
-
-        .tagline {
-          color: rgba(255, 255, 255, 0.9);
+        .brand-tagline {
           font-size: 0.85rem;
+          opacity: 0.9;
           font-weight: 500;
         }
 
-        .nav-links {
-          display: flex;
-          gap: 5px;
-          flex: 1;
-          justify-content: center;
+        .user-profile-snippet { 
+          display: flex; 
+          align-items: center; 
+          gap: 12px; 
+          cursor: pointer; 
+          position: relative; 
+          padding: 4px 8px;
+          border-radius: 8px;
+          transition: background 0.2s;
+        }
+        
+        .user-profile-snippet:hover {
+          background: rgba(255,255,255,0.15);
         }
 
-        .nav-link {
-          background: transparent;
+        .greeting-text {
+          font-weight: 600;
+          font-size: 0.95rem;
+        }
+
+        .user-avatar-circle { 
+          width: 36px; 
+          height: 36px; 
+          background: rgba(255,255,255,0.3); 
+          border-radius: 50%; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          font-weight: 700; 
+          color: white; 
+          border: 2px solid rgba(255,255,255,0.8);
+          overflow: hidden; 
+        }
+
+        /* --- DROPDOWN MENU --- */
+        .profile-menu { 
+          position: absolute; 
+          right: 0; 
+          top: 55px; 
+          width: 220px; 
+          background: white; 
+          color: #0f172a; 
+          border-radius: 12px; 
+          box-shadow: 0 10px 40px rgba(0,0,0,0.12); 
+          padding: 8px 0; 
+          z-index: 1050; 
+          border: 1px solid rgba(0,0,0,0.08);
+          animation: fadeIn 0.15s ease-out;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .menu-header-info {
+          padding: 12px 16px 8px 16px;
+        }
+        .menu-name { font-weight: 700; font-size: 0.95rem; color: #111827; }
+        .menu-role { font-size: 0.8rem; color: #6B7280; }
+
+        .menu-item { 
+          padding: 10px 16px; 
+          cursor: pointer; 
+          display: flex; 
+          align-items: center; 
+          font-size: 0.9rem; 
+          font-weight: 500;
+          color: #374151;
+          transition: background 0.1s;
+        }
+        .menu-item:hover { background: #F3F4F6; color: #fd5068; }
+        .menu-divider { height: 1px; background: #E5E7EB; margin: 6px 0; }
+
+        /* --- NAV RAIL --- */
+        .nav-rail {
+          position: fixed;
+          /* RESTORED: Top position to 170px as requested */
+          top: 170px; 
+          left: 10px;
+          width: 54px;
+          border-radius: 18px;
+          background: rgba(255,255,255,0.96);
+          box-shadow: 0 18px 38px rgba(0,0,0,0.18);
+          padding: 14px 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          z-index: 900;
+        }
+        .rail-btn {
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
           border: none;
-          color: white;
-          padding: 10px 16px;
-          border-radius: 8px;
+          background: transparent;
+          color: #0f172a;
+          display: grid;
+          place-items: center;
           cursor: pointer;
-          font-weight: 600;
-          font-size: 0.95rem;
-          transition: all 0.3s ease;
-          white-space: nowrap;
+          transition: all 0.2s ease;
         }
+        .rail-btn:hover { background: rgba(0,0,0,0.06); color: #111827; }
+        .rail-btn.active { background: #111827; color: white; box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+        .rail-btn.danger { color: #ef4444; }
+        .rail-btn.danger:hover { background: rgba(239,68,68,0.1); }
+        .rail-spacer { flex: 1; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-        .nav-link:hover {
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        .nav-link.active {
-          background: rgba(255, 255, 255, 0.25);
-        }
-
-        .nav-user {
-          display: flex;
-          align-items: center;
-          gap: 15px;
-        }
-
-        .user-greeting {
-          color: white;
-          font-weight: 600;
-          font-size: 0.95rem;
-        }
-
-        .logout-btn {
-          padding: 8px 20px;
-          background: rgba(255, 255, 255, 0.2);
-          border: 2px solid white;
-          border-radius: 8px;
-          color: white;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-          background: white;
-          color: #fd5068;
-        }
-
-        @media (max-width: 1024px) {
-          .nav-container {
-            flex-wrap: wrap;
-            padding: 15px 20px;
-          }
-
-          .nav-links {
-            order: 3;
-            width: 100%;
-            justify-content: flex-start;
-            overflow-x: auto;
-            padding-top: 10px;
-          }
-
-          .nav-link {
-            font-size: 0.85rem;
-            padding: 8px 12px;
-          }
-
-          .tagline {
-            display: none;
-          }
-        }
+        /* Dark mode rail override */
+        .dark-mode .nav-rail { background: #0f172a; box-shadow: 0 18px 38px rgba(0,0,0,0.35); }
+        .dark-mode .rail-btn { color: #e5e7eb; }
+        .dark-mode .rail-btn.active { background: #2563eb; }
 
         @media (max-width: 768px) {
-          .nav-brand h1 {
-            font-size: 1.5rem;
-          }
-
-          .user-greeting {
-            display: none;
-          }
-
-          .nav-links {
-            gap: 3px;
-          }
-
-          .nav-link {
-            font-size: 0.8rem;
-            padding: 6px 10px;
-          }
+          .brand-tagline { display: none; }
+          .top-navbar { padding: 0 20px; }
+          .greeting-text { display: none; }
         }
       `}</style>
     </nav>

@@ -6,17 +6,19 @@ import kijijiData from '../data/kijiji_listings.json';
 
 const SCRAPED_LISTINGS = [...craigslistData, ...kijijiData];
 
-const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
+const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'light', onToggleAppearance }) => {
   const firstName = userProfile?.firstName || 'Student';
   const [matches, setMatches] = useState([]);
   const [allListings, setAllListings] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
   const [avgRent, setAvgRent] = useState(0);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [appearance, setAppearance] = useState('light');
+  
+  // Removed profile menu state since it's now in Navigation
+
   const [profileForm, setProfileForm] = useState({
     avatar: userProfile?.avatar || '',
   });
+  const isDarkMode = appearance === 'dark';
 
   const effectiveUserId = userProfile?.id || userProfile?.email || 'anon';
   const storedPrefs = (() => {
@@ -164,27 +166,11 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
     onNavigate('messages');
   };
 
-  const handleProfileMenuToggle = () => {
-    setShowProfileMenu((prev) => !prev);
-  };
-
-  const handleAppearanceToggle = () => {
-    setAppearance((prev) => (prev === 'light' ? 'dark' : 'light'));
-    setShowProfileMenu(false);
-  };
-
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setProfileForm((prev) => ({ ...prev, avatar: reader.result }));
-    };
-    reader.readAsDataURL(file);
-  };
-
   return (
-    <div className="dashboard-wrapper">
+    <div className={`dashboard-wrapper ${isDarkMode ? 'dark' : 'light'}`}>
+      
+      {/* Top Navbar Removed (Now in Navigation.js) */}
+
       <main className="main-feed">
         <header className="feed-header">
           <div>
@@ -328,73 +314,25 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
         </section>
       </main>
 
-      <aside className="right-sidebar">
-        <div className="user-profile-snippet" onClick={handleProfileMenuToggle}>
-          <div className="text-right">
-            <div className="user-name">{firstName}</div>
-            <div className="user-role">Student</div>
-          </div>
-          <div className="user-avatar">{profileForm.avatar ? <img src={profileForm.avatar} alt="avatar" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : firstName[0]}</div>
-          {showProfileMenu && (
-            <div className="profile-menu light">
-              <div className="menu-item" onClick={() => onNavigate('settings')}>Settings</div>
-              <div className="menu-item" onClick={handleAppearanceToggle}>Switch appearance ({appearance})</div>
-              <div className="menu-divider" />
-              <div className="menu-item" onClick={() => onNavigate('messages')}>Messages</div>
-              <div className="menu-item" onClick={() => onNavigate('roommate-matching')}>Roommates</div>
-            </div>
-          )}
-        </div>
-
-        <div className="sidebar-content">
-          <div className="widget-container">
-            <h4>Quick Actions</h4>
-            <div className="quick-links">
-              <div className="quick-link" onClick={() => onNavigate('roommate-matching')}>
-                <span className="icon">🤝</span> Find Roommates
-              </div>
-              <div className="quick-link" onClick={() => onNavigate('rent-map')}>
-                <span className="icon">🗺️</span> Rent Map
-              </div>
-              <div className="quick-link" onClick={() => onNavigate('offer-evaluator')}>
-                <span className="icon">📊</span> Evaluate Offer
-              </div>
-            </div>
-          </div>
-
-          <div className="widget-container">
-            <h4>Schedule</h4>
-            <div className="schedule-card">
-              <div className="calendar-date">
-                <span className="month">NOV</span>
-                <span className="day">24</span>
-              </div>
-              <div className="event-details">
-                <h5>Apartment Viewing</h5>
-                <p>10:00 AM - 11:00 AM</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
       <style>{`
         .dashboard-wrapper {
-          display: grid;
-          grid-template-columns: 1fr 340px;
+          display: flex;
+          flex-direction: column;
           height: 100%;
+          width: 100%;
           font-family: 'Inter', sans-serif;
           background-color: #F3F4F6; 
         }
+
         .main-feed {
           padding: 30px 40px;
           overflow-y: auto;
-          max-height: calc(100vh - 60px);
+          flex: 1; 
         }
         .feed-header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-end;
+          align-items: center;
           margin-bottom: 30px;
         }
         .feed-header h1 { margin: 0; font-size: 2rem; color: #111827; letter-spacing: -0.5px; }
@@ -455,40 +393,41 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate }) => {
         .primary-btn:hover { opacity: 0.9; }
         .empty-matches { text-align: center; padding: 30px; color: #9CA3AF; font-style: italic; background: white; border-radius: 12px; }
 
-        .right-sidebar {
-          background: white;
-          border-left: 1px solid #E5E7EB;
-          padding: 30px;
-          display: flex;
-          flex-direction: column;
-          position: relative;
+        .dashboard-wrapper.dark {
+          background-color: #0f172a;
+          color: #e5e7eb;
         }
-        .user-profile-snippet { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-bottom: 10px; }
-        .user-name { font-weight: 700; color: #111827; font-size: 0.95rem; }
-        .user-role { color: #6B7280; font-size: 0.8rem; }
-        .user-avatar { width: 40px; height: 40px; background: #E5E7EB; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #374151; overflow: hidden; }
-        .profile-menu { position: absolute; right: -10px; top: 70px; width: 240px; background: rgba(255,255,255,0.7); color: #0f172a; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.12); padding: 12px 0; z-index: 20; backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.6); }
-        .menu-item { padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 500; }
-        .menu-item:hover { background: rgba(255,255,255,0.9); }
-        .menu-divider { height: 1px; background: rgba(15,23,42,0.08); margin: 10px 0; }
-        .sidebar-content { margin-top: auto; display: flex; flex-direction: column; gap: 30px; padding-top: 20px; }
+        .dashboard-wrapper.dark h1,
+        .dashboard-wrapper.dark h3,
+        .dashboard-wrapper.dark h4,
+        .dashboard-wrapper.dark h5,
+        .dashboard-wrapper.dark .stat-val,
+        .dashboard-wrapper.dark .price-tag { color: #e5e7eb; }
+        .dashboard-wrapper.dark .date-display,
+        .dashboard-wrapper.dark .stat-label,
+        .dashboard-wrapper.dark .location-line,
+        .dashboard-wrapper.dark .muted-line,
+        .dashboard-wrapper.dark .no-matches-text,
+        .dashboard-wrapper.dark .trend-up span { color: #cbd5e1; }
+        .dashboard-wrapper.dark .glass-card,
+        .dashboard-wrapper.dark .empty-placeholder,
+        .dashboard-wrapper.dark .listing-card,
+        .dashboard-wrapper.dark .match-row,
+        .dashboard-wrapper.dark .stat-card {
+          background: #111827;
+          border-color: rgba(255,255,255,0.08);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+        .dashboard-wrapper.dark .progress-bg { background: rgba(255,255,255,0.08); }
+        .dashboard-wrapper.dark .tag-pill { background: #1f2937; color: #d1d5db; }
+        .dashboard-wrapper.dark .tag-pill.muted { background: #374151; color: #e5e7eb; }
+        
+        .dashboard-wrapper.dark .primary-btn { background: #2563eb; }
+        .dashboard-wrapper.dark .link-btn { color: #60a5fa; }
 
-        .widget-container h4 { margin: 0 0 15px 0; color: #111827; font-size: 0.95rem; }
-        .quick-links { display: flex; flex-direction: column; gap: 10px; }
-        .quick-link { padding: 12px; background: #F9FAFB; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #374151; transition: background 0.2s; }
-        .quick-link:hover { background: #F3F4F6; }
-        .icon { font-size: 1.2rem; }
-
-        .schedule-card { background: #F9FAFB; border-radius: 12px; padding: 15px; display: flex; align-items: center; gap: 15px; border: 1px solid #F3F4F6; }
-        .calendar-date { background: white; border-radius: 8px; padding: 8px 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .month { display: block; font-size: 0.7rem; color: #3B82F6; font-weight: 700; }
-        .day { display: block; font-size: 1.2rem; font-weight: 700; color: #1F2937; }
-        .event-details h5 { margin: 0 0 4px 0; font-size: 0.9rem; color: #1F2937; }
-        .event-details p { margin: 0; font-size: 0.75rem; color: #6B7280; }
-
-        @media (max-width: 1100px) {
-          .dashboard-wrapper { grid-template-columns: 1fr; }
-          .right-sidebar { display: none; }
+        @media (max-width: 768px) {
+           .main-feed { padding: 20px; }
+           .feed-header { flex-direction: column; align-items: flex-start; gap: 15px; }
         }
       `}</style>
     </div>

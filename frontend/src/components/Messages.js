@@ -163,6 +163,25 @@ const Messages = ({ onBack }) => {
         .chat-input button { padding: 0 24px; background: #fd5068; color: white; border: none; border-radius: 25px; font-weight: 600; cursor: pointer; }
         .empty-chat { text-align: center; color: #999; margin-top: 50px; }
         .no-chat-selected { display: flex; align-items: center; justify-content: center; flex: 1; color: #777; }
+
+        .dark-mode .messages-shell { background: #0b1224; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+        .dark-mode .messages-sidebar { background: #0f172a; border-right: 1px solid rgba(255,255,255,0.08); }
+        .dark-mode .sidebar-header { border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .dark-mode .back-link { color: #e5e7eb; }
+        .dark-mode .conv-item { border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .dark-mode .conv-item.active { background: rgba(255,255,255,0.08); border-left-color: #60a5fa; }
+        .dark-mode .conv-item:hover { background: rgba(255,255,255,0.04); }
+        .dark-mode .conv-info p { color: #cbd5e1; }
+        .dark-mode .conv-time { color: #9ca3af; }
+        .dark-mode .chat-area { background: #0b1224; }
+        .dark-mode .chat-header { background: #0f172a; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .dark-mode .chat-subline { color: #cbd5e1; }
+        .dark-mode .messages-list { background: #0b1224; }
+        .dark-mode .message-bubble.received { background: #0f172a; border-color: rgba(255,255,255,0.1); color: #e5e7eb; }
+        .dark-mode .message-bubble.sent { color: white; }
+        .dark-mode .msg-time { color: #9ca3af; }
+        .dark-mode .chat-input { background: #0f172a; border-top: 1px solid rgba(255,255,255,0.08); }
+        .dark-mode .chat-input input { background: #0b1224; border-color: rgba(255,255,255,0.12); color: #e5e7eb; }
       `}</style>
     </div>
   );
