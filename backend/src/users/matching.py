@@ -1,83 +1,80 @@
 # ml_utils.py
 import math
 
-def calculate_similarity(user_preferences, candidate_profile):
+
+def _normalize_budget(amount, cap=5000.0):
     """
-    Calculates a match percentage (0-100) between a looking user and a candidate.
-    Uses a Weighted Sum Model (a simple form of Multi-Criteria Decision Analysis).
+    Convert a budget/rent value into a [0, 1] range with a soft cap.
+    Higher numbers mean the person is comfortable with (or asking) higher rent.
     """
-    
-    # --- 1. CONFIGURATION: WEIGHTS ---
-    # Adjust these based on what you think is most important
+    try:
+        num = float(amount)
+    except (TypeError, ValueError):
+        return 0.0
+    if num < 0:
+        num = 0.0
+    if num > cap:
+        num = cap
+    return num / cap
+
+
+def _encode_profile(profile, is_user=False, interest_buckets=8):
+    """
+    Map profile attributes into a numeric feature vector for cosine similarity.
+    The same dimensions are used for users and candidates; scaling is handled via weights.
+    """
+    # Weights double as feature scaling factors.
     WEIGHTS = {
-        'budget': 0.35,      # 35% importance
-        'cleanliness': 0.25, # 25% importance
-        'sleep': 0.20,       # 20% importance
-        'interests': 0.20    # 20% importance
+        'budget': 0.35,
+        'cleanliness': 0.25,
+        'sleep': 0.20,
+        'interests': 0.20
     }
 
-    score = 0.0
-
-    # --- 2. BUDGET SCORE (Numerical Distance) ---
-    # We allow a buffer of $200. If within buffer, score is high.
-    user_budget = float(user_preferences.get('budget_max', 0))
-    candidate_price = float(candidate_profile.get('rent_ask', 0))
-    
-    price_diff = abs(user_budget - candidate_price)
-    
-    if price_diff <= 50: # Perfect match
-        budget_score = 1.0
-    elif price_diff <= 200: # Good match
-        budget_score = 0.8
-    elif price_diff <= 400: # Okay match
-        budget_score = 0.5
-    else: # Too expensive/cheap
-        budget_score = 0.0
-        
-    score += budget_score * WEIGHTS['budget']
-
-    # --- 3. CLEANLINESS SCORE (Categorical Ordinal) ---
-    # Map text to numbers: 1 (Messy) to 5 (Sparkling)
     clean_map = {"messy": 1, "moderate": 3, "clean": 4, "very_clean": 5}
-    
-    user_clean = clean_map.get(user_preferences.get('cleanliness', 'moderate'), 3)
-    cand_clean = clean_map.get(candidate_profile.get('cleanliness', 'moderate'), 3)
-    
-    # Calculate normalized difference
-    clean_diff = abs(user_clean - cand_clean)
-    # If diff is 0, score 1. If diff is 4 (max), score 0.
-    clean_score = 1 - (clean_diff / 4) 
-    
-    score += clean_score * WEIGHTS['cleanliness']
+    sleep_map = {"early_bird": 0.0, "flexible": 0.5, "night_owl": 1.0}
 
-    # --- 4. SLEEP SCHEDULE (Categorical Exact) ---
-    # If they match, 100%. If "Flexible", 80% match with anyone.
-    u_sleep = user_preferences.get('sleep_schedule', 'flexible')
-    c_sleep = candidate_profile.get('sleep_schedule', 'flexible')
-    
-    if u_sleep == c_sleep:
-        sleep_score = 1.0
-    elif u_sleep == 'flexible' or c_sleep == 'flexible':
-        sleep_score = 0.8
+    budget_key = 'budget_max' if is_user else 'rent_ask'
+    budget_feat = _normalize_budget(profile.get(budget_key, 0)) * WEIGHTS['budget']
+
+    clean_val = clean_map.get(profile.get('cleanliness', 'moderate'), 3)
+    # Normalize cleanliness to [0,1]
+    clean_feat = (clean_val - 1) / 4 * WEIGHTS['cleanliness']
+
+    sleep_val = sleep_map.get(profile.get('sleep_schedule', 'flexible'), 0.5)
+    sleep_feat = sleep_val * WEIGHTS['sleep']
+
+    # Interest hashing into fixed buckets for consistent vector length.
+    interest_vec = [0.0] * interest_buckets
+    interests = profile.get('interests', []) or []
+    for tag in interests:
+        idx = abs(hash(str(tag).lower())) % interest_buckets
+        interest_vec[idx] += 1.0
+    # Normalize counts to [0,1] if any interests exist.
+    total_interest = sum(interest_vec)
+    if total_interest > 0:
+        interest_vec = [(val / total_interest) * WEIGHTS['interests'] for val in interest_vec]
     else:
-        # e.g. Early Bird vs Night Owl
-        sleep_score = 0.2
-        
-    score += sleep_score * WEIGHTS['sleep']
+        interest_vec = [0.0 for _ in interest_vec]
 
-    # --- 5. INTERESTS (Jaccard Similarity) ---
-    # Intersection over Union: How many shared tags vs total unique tags
-    u_interests = set(user_preferences.get('interests', []))
-    c_interests = set(candidate_profile.get('interests', []))
-    
-    if len(u_interests) + len(c_interests) == 0:
-        interest_score = 0.5 # Neutral if no data
-    else:
-        intersection = len(u_interests.intersection(c_interests))
-        union = len(u_interests.union(c_interests))
-        interest_score = intersection / union
+    return [budget_feat, clean_feat, sleep_feat, *interest_vec]
 
-    score += interest_score * WEIGHTS['interests']
 
-    # Final result as percentage
-    return int(round(score * 100))
+def _cosine_similarity(vec_a, vec_b):
+    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    norm_a = math.sqrt(sum(a * a for a in vec_a))
+    norm_b = math.sqrt(sum(b * b for b in vec_b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def calculate_similarity(user_preferences, candidate_profile):
+    """
+    Calculates a match percentage (0-100) between a looking user and a candidate
+    using cosine similarity over a weighted feature vector.
+    """
+    user_vec = _encode_profile(user_preferences, is_user=True)
+    candidate_vec = _encode_profile(candidate_profile, is_user=False)
+    similarity = _cosine_similarity(user_vec, candidate_vec)
+    return int(round(similarity * 100))

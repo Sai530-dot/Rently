@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config';
 import { api } from '../services/api';
 
-const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
+const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup, onSignupSuccess }) => {
+  // Fall back to student signup if user type is missing (e.g., refreshed on /signup)
+  const effectiveUserType = userType || 'student-signup';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,10 +21,10 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
 
   // Load universities from Django API
   useEffect(() => {
-    if (userType === 'student-signup') {
+    if (effectiveUserType === 'student-signup') {
       loadUniversities();
     }
-  }, [userType]);
+  }, [effectiveUserType]);
 
   const loadUniversities = async () => {
     try {
@@ -67,7 +69,7 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
     
     // Basic validation
     const requiredFields = ['name', 'email', 'password', 'confirmPassword'];
-    if (userType === 'landlord-signup') {
+    if (effectiveUserType === 'landlord-signup') {
       requiredFields.push('phone');
     } else {
       requiredFields.push('university');
@@ -110,7 +112,7 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
       password: formData.password,
     };
 
-    if (userType === 'student-signup') {
+    if (effectiveUserType === 'student-signup') {
       payload.university = formData.university;
     } else {
       payload.phone = formData.phone;
@@ -118,7 +120,7 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
 
     setIsLoading(true);
     try {
-      const response = userType === 'student-signup'
+      const response = effectiveUserType === 'student-signup'
         ? await api.studentSignup(payload)
         : await api.landlordSignup(payload);
 
@@ -126,8 +128,18 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
         throw new Error(response.message || 'Signup failed');
       }
 
-      const userTypeName = userType.replace('-signup', '');
+      const userTypeName = effectiveUserType.replace('-signup', '');
       alert(response.message || `${userTypeName.charAt(0).toUpperCase() + userTypeName.slice(1)} account created successfully!`);
+      // Pass user data up so the app can persist id/email immediately
+      if (onSignupSuccess) {
+        onSignupSuccess({
+          id: response.user_id,
+          email: payload.email,
+          firstName: payload.name,
+          user_type: userTypeName,
+          firebase_uid: response.firebase_uid,
+        });
+      }
       onShowProfileSetup();
     } catch (error) {
       console.error('Signup error:', error);
@@ -147,8 +159,8 @@ const SignupForm = ({ userType, onBack, onShowLogin, onShowProfileSetup }) => {
     onShowLogin();
   };
 
-  const isStudentSignup = userType === 'student-signup';
-  const userTypeName = userType.replace('-signup', '');
+  const isStudentSignup = effectiveUserType === 'student-signup';
+  const userTypeName = effectiveUserType.replace('-signup', '');
 
 return (
     <div className="login-form-container">

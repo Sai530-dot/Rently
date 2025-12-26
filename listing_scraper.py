@@ -113,14 +113,19 @@ def scrape_listings():
                         loc_tag = item.find('div', class_='location') or item.find('span', class_='result-hood')
                         location_text = loc_tag.text.strip(" ()") if loc_tag else city_name
 
-                        # 4. Images
-                        image_url = random.choice(['🏢', '🏠', '🏘️', '🏙️'])
+                        # 4. Images (collect all ids as URLs)
+                        image_url = None
+                        image_urls = []
                         img_container = item.find('a', class_='result-image')
                         if img_container and img_container.has_attr('data-ids'):
                             img_ids = img_container['data-ids'].split(',')
-                            if img_ids:
-                                clean_id = img_ids[0].split(':')[1]
-                                image_url = f"https://images.craigslist.org/{clean_id}_300x300.jpg"
+                            for img_id in img_ids:
+                                parts = img_id.split(':')
+                                if len(parts) == 2:
+                                    clean_id = parts[1]
+                                    image_urls.append(f"https://images.craigslist.org/{clean_id}_600x450.jpg")
+                            if image_urls:
+                                image_url = image_urls[0]
 
                         # 5. Geocode
                         lat, lon = get_coordinates(location_text, city_name, city_config["code"])
@@ -139,6 +144,7 @@ def scrape_listings():
                             "bathrooms": 1,
                             "sqft": random.randint(500, 1200),
                             "image": image_url,
+                            "images": image_urls,
                             "available": "Available Now",
                             "utilities": random.choice(["Included", "Not Included"]),
                             "parking": random.choice([True, False]),

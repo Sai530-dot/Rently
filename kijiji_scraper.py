@@ -94,12 +94,12 @@ def scrape_kijiji():
                 full_link = f"https://www.kijiji.ca{href}" if href.startswith('/') else href
 
                 # --- 3. IMAGE ---
-                image_url = "🏠"
-                img_node = item.find('img')
-                if img_node:
-                    image_url = img_node.get('src') or img_node.get('data-src') or img_node.get('srcset') or "🏠"
-                    if "placeholder" in image_url or "data:image" in image_url:
-                        image_url = "🏠"
+                image_urls = []
+                for img_node in item.find_all('img'):
+                    candidate = img_node.get('src') or img_node.get('data-src') or img_node.get('srcset')
+                    if candidate and "placeholder" not in candidate and "data:image" not in candidate:
+                        image_urls.append(candidate.split()[0])
+                image_url = image_urls[0] if image_urls else None
 
                 # --- 4. LOCATION ---
                 location_text = "Saskatoon"
@@ -125,6 +125,7 @@ def scrape_kijiji():
                     "bathrooms": 1,
                     "sqft": random.randint(500, 1000),
                     "image": image_url,
+                    "images": image_urls,
                     "available": "Now",
                     "utilities": "Contact",
                     "parking": True,
@@ -142,25 +143,11 @@ def scrape_kijiji():
             except Exception:
                 continue
 
-        if len(listings) == 0:
-            return generate_fallback_data()
-
         return listings
 
     except Exception as e:
         print(f"Critical Error: {e}")
-        return generate_fallback_data()
-
-
-def generate_fallback_data():
-    print("⚠️ Scraper blocked. Generating fallback items.")
-    return [
-        {
-            "id": 9999, "title": "Fallback Kijiji Listing", "rent": 1000,
-            "address": "Saskatoon, SK", "lat": 52.1332, "lon": -106.6700,
-            "url": "https://kijiji.ca", "image": "🏠"
-        }
-    ]
+        return []
 
 
 if __name__ == "__main__":

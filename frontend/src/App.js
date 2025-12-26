@@ -69,6 +69,13 @@ function App() {
     localStorage.setItem('rently_user_preferences', JSON.stringify(prefs));
   };
 
+  // If the stored view is signup but userType is missing (e.g., refreshed mid-flow), default to student signup
+  useEffect(() => {
+    if (currentView === 'signup' && !userType) {
+      setUserType('student-signup');
+    }
+  }, [currentView, userType]);
+
   const persistPreferencesToBackend = async (profile, prefs) => {
     if (!profile) return;
     const userId = profile.id || profile.email;
@@ -132,6 +139,16 @@ function App() {
     localStorage.removeItem('rently_saved_properties');
     localStorage.removeItem('rently_conversations');
     // keep preferences; they are namespaced per user
+  };
+
+  const handleSignupSuccess = (userData) => {
+    const normalized = userData?.id ? userData : { ...userData, id: userData?.email };
+    if (!normalized?.email) {
+      normalized.email = userData?.email || '';
+    }
+    setUserProfile(normalized);
+    // proceed to profile setup flow
+    handleNavigate('profile-setup');
   };
 
   const handleLoginSuccess = (userData) => {
@@ -212,7 +229,15 @@ function App() {
       case 'signup-selection':
         return <UserTypeSelection onUserTypeSelect={(type) => { setUserType(type); handleNavigate('signup'); }} onBack={() => handleNavigate('selection')} mode="signup" />;
       case 'signup':
-        return <SignupForm userType={userType} onBack={() => handleNavigate('signup-selection')} onShowLogin={() => handleNavigate('login')} onShowProfileSetup={() => handleNavigate('profile-setup')} />;
+        return (
+          <SignupForm
+            userType={userType}
+            onBack={() => handleNavigate('signup-selection')}
+            onShowLogin={() => handleNavigate('login')}
+            onShowProfileSetup={() => handleNavigate('profile-setup')}
+            onSignupSuccess={handleSignupSuccess}
+          />
+        );
       case 'profile-setup':
         return <ProfileSetup userType={userType} onContinue={(name) => { setUserProfile({ ...userProfile, firstName: name }); handleNavigate('budget-preference'); }} />;
       case 'budget-preference':

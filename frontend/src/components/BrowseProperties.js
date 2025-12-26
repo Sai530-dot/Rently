@@ -6,128 +6,7 @@ import kijijiData from '../data/kijiji_listings.json';
 
 const ALL_LISTINGS = [...craigslistData, ...kijijiData];
 
-const SAMPLE_PROPERTIES = [
-  {
-    id: 1,
-    title: 'Modern 1BR Near Campus',
-    address: '123 College St, Toronto, ON',
-    rent: 1650,
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 550,
-    image: '🏢',
-    available: 'Available Now',
-    utilities: 'Included',
-    parking: true,
-    laundry: 'In-unit',
-    petFriendly: false,
-    furnished: false,
-    distance: '0.5 km to campus',
-    amenities: ['WiFi', 'Gym', 'Storage'],
-    landlord: 'Property Management Co.',
-    description: 'Bright and modern 1-bedroom apartment close to campus. Perfect for students!'
-  },
-  {
-    id: 2,
-    title: 'Cozy Studio Downtown',
-    address: '456 Queen St W, Toronto, ON',
-    rent: 1400,
-    bedrooms: 0,
-    bathrooms: 1,
-    sqft: 400,
-    image: '🏠',
-    available: 'Dec 1, 2024',
-    utilities: 'Not Included',
-    parking: false,
-    laundry: 'In-building',
-    petFriendly: true,
-    furnished: true,
-    distance: '1.2 km to campus',
-    amenities: ['WiFi', 'Balcony'],
-    landlord: 'John Smith',
-    description: 'Fully furnished studio in the heart of downtown. Great for students who want city life!'
-  },
-  {
-    id: 3,
-    title: 'Spacious 2BR Apartment',
-    address: '789 Bloor St, Toronto, ON',
-    rent: 2200,
-    bedrooms: 2,
-    bathrooms: 1,
-    sqft: 850,
-    image: '🏘️',
-    available: 'Available Now',
-    utilities: 'Included',
-    parking: true,
-    laundry: 'In-unit',
-    petFriendly: true,
-    furnished: false,
-    distance: '0.8 km to campus',
-    amenities: ['WiFi', 'Gym', 'Pool', 'Storage', 'Balcony'],
-    landlord: 'Urban Living Properties',
-    description: 'Perfect for sharing! Spacious 2-bedroom with all amenities. Great for roommates!'
-  },
-  {
-    id: 4,
-    title: 'Affordable 1BR Basement',
-    address: '321 Spadina Ave, Toronto, ON',
-    rent: 1200,
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 500,
-    image: '🏡',
-    available: 'Jan 1, 2025',
-    utilities: 'Not Included',
-    parking: true,
-    laundry: 'Shared',
-    petFriendly: false,
-    furnished: false,
-    distance: '1.5 km to campus',
-    amenities: ['WiFi', 'Storage'],
-    landlord: 'Private Owner',
-    description: 'Budget-friendly basement apartment. Quiet neighborhood, perfect for studying.'
-  },
-  {
-    id: 5,
-    title: 'Luxury 1BR Condo',
-    address: '555 Bay St, Toronto, ON',
-    rent: 2400,
-    bedrooms: 1,
-    bathrooms: 1,
-    sqft: 650,
-    image: '🏙️',
-    available: 'Available Now',
-    utilities: 'Included',
-    parking: true,
-    laundry: 'In-unit',
-    petFriendly: true,
-    furnished: true,
-    distance: '2.0 km to campus',
-    amenities: ['WiFi', 'Gym', 'Pool', 'Concierge', 'Rooftop Terrace'],
-    landlord: 'Luxury Condos Inc.',
-    description: 'High-end condo with stunning city views. All amenities included!'
-  },
-  {
-    id: 6,
-    title: 'Student-Friendly 2BR',
-    address: '888 Harbord St, Toronto, ON',
-    rent: 1900,
-    bedrooms: 2,
-    bathrooms: 1,
-    sqft: 750,
-    image: '🏘️',
-    available: 'Available Now',
-    utilities: 'Not Included',
-    parking: false,
-    laundry: 'In-building',
-    petFriendly: false,
-    furnished: false,
-    distance: '0.3 km to campus',
-    amenities: ['WiFi', 'Study Room'],
-    landlord: 'Student Housing Co.',
-    description: 'Perfect for students! Super close to campus. Ideal for 2 roommates.'
-  }
-];
+
 
 const BrowseProperties = ({ onBack, userPreferences }) => {
   const [properties, setProperties] = useState(realListings.length > 0 ? realListings : []);
@@ -146,40 +25,29 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
     moveInDate: ''
   });
 
-  // Extract user's preferred location
   const userCity = userPreferences?.location?.city || 
                    userPreferences?.location?.formatted?.split(',')[0] || 
                    'Toronto';
 
-  // Fetch properties from API
   useEffect(() => {
     fetchProperties();
     loadSavedProperties();
   }, []);
 
-  // Load saved properties from localStorage
   const loadSavedProperties = () => {
     const saved = JSON.parse(localStorage.getItem('rently_saved_properties') || '[]');
     const savedIds = saved.map(p => p.id);
     setSavedProperties(savedIds);
-    console.log(`📂 Loaded ${savedIds.length} saved properties from localStorage`);
   };
 
  const fetchProperties = () => {
     setLoading(true);
     setError(null);
-    console.log('🔄 Fetching properties...');
     
-    // Using .then().catch() avoids the try/catch syntax error completely
     fetch(`${API_BASE_URL}/properties`)
-      .then(response => {
-        console.log('📡 Response status:', response.status);
-        return response.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        console.log('📊 API Response:', data);
         if (data.success && data.properties) {
-          console.log(`✅ Loaded ${data.properties.length} properties from Server`);
           setProperties(data.properties);
           setLoading(false);
         } else {
@@ -187,17 +55,12 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
         }
       })
       .catch(err => {
-        // This block runs if server is down
-        console.error('❌ Connection failed, switching to fallback.');
-        
-      if (ALL_LISTINGS && ALL_LISTINGS.length > 0) {
-        console.log(`📂 Server down. Using ${ALL_LISTINGS.length} total scraped listings.`);
-        setProperties(ALL_LISTINGS);
-        setError(null);
-      } else {
-        console.log('⚠️ No scraped data found, using samples');
-        setProperties(SAMPLE_PROPERTIES);
-      }
+        if (ALL_LISTINGS && ALL_LISTINGS.length > 0) {
+          setProperties(ALL_LISTINGS);
+          setError(null);
+        } else {
+          setProperties([]);
+        }
         setLoading(false);
       });
   };
@@ -206,39 +69,24 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
     const property = properties.find(p => p.id === propertyId);
     if (!property) return;
 
-    // Get existing saved properties from localStorage
     const existingSaved = JSON.parse(localStorage.getItem('rently_saved_properties') || '[]');
     
     if (savedProperties.includes(propertyId)) {
-      // Remove from saved
       const updatedSaved = savedProperties.filter(id => id !== propertyId);
       setSavedProperties(updatedSaved);
-      
-      // Remove from localStorage
       const updatedLocalStorage = existingSaved.filter(p => p.id !== propertyId);
       localStorage.setItem('rently_saved_properties', JSON.stringify(updatedLocalStorage));
-      
-      console.log('🗑️ Property removed from saved:', property.title);
     } else {
-      // Add to saved
       setSavedProperties([...savedProperties, propertyId]);
-      
-      // Add to localStorage with full property data
-      const propertyToSave = {
-        ...property,
-        savedAt: new Date().toISOString()
-      };
+      const propertyToSave = { ...property, savedAt: new Date().toISOString() };
       existingSaved.push(propertyToSave);
       localStorage.setItem('rently_saved_properties', JSON.stringify(existingSaved));
-      
-      console.log('💾 Property saved:', property.title);
     }
   };
 
   const handleContactLandlord = (property) => {
     setContactProperty(property);
     setShowContactModal(true);
-    // Pre-fill message only
     setContactForm({
       message: `Hi, I'm interested in your property at ${property.address}. I would like to schedule a viewing.`,
       moveInDate: ''
@@ -256,7 +104,6 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
   const handleSubmitContact = async (e) => {
     e.preventDefault();
     
-    // Create new conversation for Messages inbox
     const newConversation = {
       id: Date.now(),
       name: contactProperty.landlord,
@@ -277,7 +124,6 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
       moveInDate: contactForm.moveInDate || null
     };
 
-    // Save to localStorage for Messages component
     const existingConversations = JSON.parse(localStorage.getItem('rently_conversations') || '[]');
     const existingMessages = JSON.parse(localStorage.getItem('rently_messages') || '{}');
 
@@ -287,64 +133,65 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
     localStorage.setItem('rently_conversations', JSON.stringify(existingConversations));
     localStorage.setItem('rently_messages', JSON.stringify(existingMessages));
 
-    console.log('📧 Message sent to landlord:', {
-      property: contactProperty.title,
-      landlord: contactProperty.landlord,
-      message: contactForm.message,
-      moveInDate: contactForm.moveInDate
-    });
-
-    // Show success message
     alert(`✅ Message sent to ${contactProperty.landlord}!\n\nYour conversation has been added to your Messages inbox.`);
     
-    // Close modal and reset form
     setShowContactModal(false);
     setContactProperty(null);
-    setContactForm({
-      message: '',
-      moveInDate: ''
-    });
+    setContactForm({ message: '', moveInDate: '' });
+  };
+
+  const normalizeCity = (address = '') => {
+    if (!address) return 'Other';
+    const knownCities = ['saskatoon', 'toronto', 'calgary', 'edmonton', 'regina', 'winnipeg', 'vancouver', 'montreal'];
+    const tokens = String(address)
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    for (const t of tokens) {
+      const lower = t.toLowerCase();
+      const match = knownCities.find((c) => lower.includes(c));
+      if (match) return match.charAt(0).toUpperCase() + match.slice(1);
+    }
+
+    const cleaned = tokens.filter((t) => !/^(on|sk|ab|bc|mb|qc|ns|nb|nl|yt|nt|nu|canada|ontario)$/i.test(t));
+    if (cleaned.length > 0) return cleaned[cleaned.length - 1];
+    return 'Other';
+  };
+
+  const getImageUrl = (imageField, images = []) => {
+    const fromImages = Array.isArray(images)
+      ? images.find((u) => typeof u === 'string' && u.startsWith('http'))
+      : null;
+    if (fromImages) return fromImages;
+    if (Array.isArray(imageField)) {
+      const url = imageField.find((u) => typeof u === 'string' && u.startsWith('http'));
+      return url || imageField.find((u) => typeof u === 'string') || null;
+    }
+    return imageField || null;
   };
 
   const filteredProperties = properties
     .filter(prop => {
-      // Filter by bedrooms
-      if (filterBedrooms !== 'all' && prop.bedrooms !== parseInt(filterBedrooms)) {
-        return false;
-      }
-      // Filter by rent
-      if (prop.rent > filterMaxRent) {
-        return false;
-      }
-      // Filter by location
+      if (filterBedrooms !== 'all' && prop.bedrooms !== parseInt(filterBedrooms)) return false;
+      if (prop.rent > filterMaxRent) return false;
       if (filterLocation !== 'all') {
         if (filterLocation === 'preferred') {
-          // Show properties in user's preferred city
-          if (!prop.address.toLowerCase().includes(userCity.toLowerCase())) {
-            return false;
-          }
+          if (!prop.address.toLowerCase().includes(userCity.toLowerCase())) return false;
         } else if (filterLocation === 'nearby') {
-          // Show properties within 2km
           const distance = parseFloat(prop.distance);
-          if (distance > 2.0) {
-            return false;
-          }
+          if (distance > 2.0) return false;
         }
       }
       return true;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'rent-low':
-          return a.rent - b.rent;
-        case 'rent-high':
-          return b.rent - a.rent;
-        case 'size-large':
-          return b.sqft - a.sqft;
-        case 'distance':
-          return parseFloat(a.distance) - parseFloat(b.distance);
-        default:
-          return 0;
+        case 'rent-low': return a.rent - b.rent;
+        case 'rent-high': return b.rent - a.rent;
+        case 'size-large': return b.sqft - a.sqft;
+        case 'distance': return parseFloat(a.distance) - parseFloat(b.distance);
+        default: return 0;
       }
     });
 
@@ -405,11 +252,7 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
         </div>
       </div>
 
-      {error && (
-        <div className="error-banner">
-          ⚠️ {error}
-        </div>
-      )}
+      {error && <div className="error-banner">⚠️ {error}</div>}
 
       <div className="properties-stats">
         <span>Showing {filteredProperties.length} properties</span>
@@ -422,93 +265,96 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
           <p>Loading properties...</p>
         </div>
       ) : (
-        <div className="properties-grid">
-          {filteredProperties.map(property => (
-          <div key={property.id} className="property-card">
-            <div 
-              className="property-image" 
-              style={{
-                // If it's a URL, set as background image. If emoji, use gradient.
-                backgroundImage: property.image.startsWith('http') 
-                  ? `url(${property.image})` 
-                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
-            >
-              {/* Only show the emoji span if it IS NOT a URL */}
-              {!property.image.startsWith('http') && (
-                <span className="property-icon">{property.image}</span>
-              )}
-
-              <button
-                className={`save-btn ${savedProperties.includes(property.id) ? 'saved' : ''}`}
-                onClick={() => handleSaveProperty(property.id)}
-              >
-                {savedProperties.includes(property.id) ? '❤️' : '🤍'}
-              </button>
-              
-              <span className="available-badge">{property.available}</span>
-            </div>
-
-            <div className="property-details">
-              <div className="property-header">
-                <h3>{property.title}</h3>
-                <div className="property-rent">${property.rent}/mo</div>
-              </div>
-
-              <div className="property-address">📍 {property.address}</div>
-              <div className="property-distance">🚶 {property.distance}</div>
-
-              <div className="property-specs">
-                <span>🛏️ {property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} BR`}</span>
-                <span>🚿 {property.bathrooms} BA</span>
-                <span>📐 {property.sqft} sqft</span>
-                <span>💰 ${(property.rent / property.sqft).toFixed(2)}/sqft</span>
-              </div>
-
-              <div className="property-features">
-                {property.utilities === 'Included' && <span className="feature">✅ Utilities</span>}
-                {property.parking && <span className="feature">🚗 Parking</span>}
-                {property.laundry === 'In-unit' && <span className="feature">🧺 Laundry</span>}
-                {property.petFriendly && <span className="feature">🐾 Pet OK</span>}
-                {property.furnished && <span className="feature">🛋️ Furnished</span>}
-              </div>
-
-              {property.aiAnalysis && property.aiAnalysis.highlights && property.aiAnalysis.highlights.length > 0 && (
-                <div className="ai-highlights">
-                  <div className="ai-highlights-header">
-                    <span className="ai-icon-small">🤖</span>
-                    <span>AI Detected:</span>
-                  </div>
-                  <div className="ai-highlights-list">
-                    {property.aiAnalysis.highlights.slice(0, 3).map((highlight, idx) => (
-                      <span key={idx} className="ai-highlight-tag">✨ {highlight}</span>
-                    ))}
-                  </div>
+        <div className="city-sections">
+          {Object.entries(
+            filteredProperties.reduce((acc, prop) => {
+              const city = normalizeCity(prop.address);
+              if (!acc[city]) acc[city] = [];
+              acc[city].push(prop);
+              return acc;
+            }, {})
+          )
+            .sort(([a], [b]) => {
+              const al = a.toLowerCase();
+              const bl = b.toLowerCase();
+              if (al === 'saskatoon' && bl !== 'saskatoon') return -1;
+              if (bl === 'saskatoon' && al !== 'saskatoon') return 1;
+              return a.localeCompare(b);
+            })
+            .map(([city, list]) => (
+              <section key={city} className="city-section">
+                <div className="city-header">
+                  {city.toLowerCase() === 'saskatoon' ? 'Popular homes in Saskatoon' : `Homes in ${city}`}
                 </div>
-              )}
+                <div className="properties-grid">
+                  {list.map((property) => {
+                    const imageUrl = getImageUrl(property.image, property.images);
+                    const hasImage = typeof imageUrl === 'string' && imageUrl.startsWith('http');
+                    return (
+                      <div
+                        key={property.id}
+                        className="property-card"
+                        onClick={() => { handleCardClick(property); setSelectedProperty(property); }}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div
+                          className="property-image"
+                          style={{
+                            backgroundImage: hasImage
+                              ? `url(${imageUrl})`
+                              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                          }}
+                        >
+                          {!hasImage && (
+                            <span className="property-icon">??</span>
+                          )}
 
-              <div className="property-actions">
-                <button
-                  className="view-details-btn"
-                  onClick={() => setSelectedProperty(property)}
-                >
-                  View Details
-                </button>
-                <button 
-                  className="contact-btn"
-                  onClick={() => handleContactLandlord(property)}
-                >
-                  Contact Landlord
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+                          <button
+                        className={`save-btn ${savedProperties.includes(property.id) ? 'saved' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); handleSaveProperty(property.id); }}
+                      >
+                            {savedProperties.includes(property.id) ? 'Saved' : '+'}
+                      </button>
+                          <span className="available-badge">{property.available || 'Now'}</span>
+                        </div>
+
+                        <div className="property-details">
+                          <div className="property-header">
+                            <h3>{property.title}</h3>
+                          </div>
+
+                          {property.available && (
+                            <div className="property-subline">{property.available}</div>
+                          )}
+                          <div className="property-address">{property.address}</div>
+                          <div className="property-price">${property.rent}/mo</div>
+                          {property.distance && <div className="property-distance">{property.distance}</div>}
+                          <div className="property-actions desktop-only">
+                            <button
+                              className="view-details-btn"
+                              onClick={(e) => { e.stopPropagation(); setSelectedProperty(property); }}
+                            >
+                              View Details
+                            </button>
+                            <button
+                              className="contact-btn"
+                              onClick={(e) => { e.stopPropagation(); handleContactLandlord(property); }}
+                            >
+                              Contact Landlord
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
         </div>
       )}
-
       {selectedProperty && (
         <div className="modal-overlay" onClick={() => setSelectedProperty(null)}>
           <div className="modal-content property-modal" onClick={(e) => e.stopPropagation()}>
@@ -812,47 +658,63 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
 
         .properties-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-          gap: 25px;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 18px;
+          padding: 0 12px 18px;
         }
 
         .property-card {
-          background: white;
-          border-radius: 12px;
+          background: #fff;
+          border-radius: 18px;
           overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+          border: 1px solid rgba(0,0,0,0.05);
+          transition: transform 0.22s ease, box-shadow 0.22s ease;
         }
 
         .property-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+          transform: translateY(-3px);
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
 
         .property-image {
           position: relative;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 60px 20px;
+          padding: 52px 16px;
           text-align: center;
+          min-height: 170px;
+        }
+
+        .property-image::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.25) 100%);
+          pointer-events: none;
         }
 
         .property-icon {
-          font-size: 4rem;
+          font-size: 3.6rem;
+          position: relative;
+          z-index: 1;
         }
 
         .save-btn {
           position: absolute;
-          top: 15px;
-          right: 15px;
-          background: white;
-          border: none;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          font-size: 1.5rem;
+          top: 12px;
+          right: 12px;
+          background: rgba(255,255,255,0.95);
+          border: 1px solid rgba(0,0,0,0.08);
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #111827;
           cursor: pointer;
-          transition: transform 0.2s ease;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+          z-index: 2;
         }
 
         .save-btn:hover {
@@ -865,196 +727,95 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
 
         @keyframes heartbeat {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.2); }
+          50% { transform: scale(1.15); }
         }
 
         .available-badge {
           position: absolute;
-          top: 15px;
-          left: 15px;
-          background: #51cf66;
+          top: 12px;
+          left: 12px;
+          background: rgba(0,0,0,0.7);
           color: white;
-          padding: 6px 12px;
-          border-radius: 20px;
-          font-size: 0.85rem;
+          padding: 6px 11px;
+          border-radius: 16px;
+          font-size: 0.82rem;
           font-weight: 600;
-        }
-
-        .ai-quality-badge {
-          position: absolute;
-          bottom: 15px;
-          left: 15px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .ai-icon {
-          font-size: 1.2rem;
-        }
-
-        .ai-score {
-          font-size: 1.5rem;
-          font-weight: 700;
-        }
-
-        .ai-label {
-          font-size: 0.7rem;
-          opacity: 0.9;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+          z-index: 2;
         }
 
         .property-details {
-          padding: 20px;
+          padding: 16px;
         }
 
         .property-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 15px;
+          margin-bottom: 8px;
+          gap: 8px;
         }
 
         .property-header h3 {
           margin: 0;
-          font-size: 1.3rem;
-          color: #333;
+          font-size: 1rem;
+          color: #111827;
           flex: 1;
-        }
-
-        .property-rent {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #fd5068;
-          white-space: nowrap;
-          margin-left: 10px;
+          line-height: 1.3;
         }
 
         .property-address,
         .property-distance {
-          margin: 5px 0;
-          color: #666;
-          font-size: 0.95rem;
-        }
-
-        .property-specs {
-          display: flex;
-          gap: 15px;
-          margin: 15px 0;
-          padding: 15px 0;
-          border-top: 1px solid #f0f0f0;
-          border-bottom: 1px solid #f0f0f0;
-          flex-wrap: wrap;
-        }
-
-        .property-specs span {
+          margin: 2px 0;
+          color: #4b5563;
           font-size: 0.9rem;
-          color: #666;
-          font-weight: 500;
-        }
-
-        .property-features {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin: 15px 0;
-        }
-
-        .feature {
-          padding: 6px 12px;
-          background: #f0f0f0;
-          border-radius: 15px;
-          font-size: 0.85rem;
-          font-weight: 500;
-          color: #666;
-        }
-
-        .ai-highlights {
-          margin-top: 15px;
-          padding: 12px;
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-          border-radius: 8px;
-          border: 1px solid rgba(102, 126, 234, 0.2);
-        }
-
-        .ai-highlights-header {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.85rem;
           font-weight: 600;
-          color: #667eea;
-          margin-bottom: 8px;
         }
 
-        .ai-icon-small {
+        .property-subline {
+          margin: 2px 0 4px 0;
+          color: #6b7280;
+          font-size: 0.85rem;
+        }
+
+        .property-price {
           font-size: 1rem;
-        }
-
-        .ai-highlights-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
-
-        .ai-highlight-tag {
-          background: white;
-          color: #667eea;
-          padding: 4px 10px;
-          border-radius: 12px;
-          font-size: 0.75rem;
           font-weight: 600;
-          border: 1px solid rgba(102, 126, 234, 0.3);
+          color: #111827;
+          margin: 0 0 6px 0;
         }
 
         .property-actions {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 10px;
-          margin-top: 15px;
+          margin-top: 12px;
         }
 
-        .view-details-btn,
-        .contact-btn {
-          padding: 12px;
-          border: none;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
+        .city-sections {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
         }
 
-        .view-details-btn {
-          background: linear-gradient(45deg, #fd5068, #ff6b9d);
-          color: white;
+        .city-section {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
         }
 
-        .view-details-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(253, 80, 104, 0.3);
+        .city-header {
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #111827;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
-        .contact-btn {
-          background: white;
-          border: 2px solid #fd5068;
-          color: #fd5068;
-        }
-
-        .contact-btn:hover {
-          background: #fd5068;
-          color: white;
+        .city-header::after {
+          content: '›';
+          font-size: 1rem;
+          color: #6b7280;
         }
 
         .modal-overlay {
@@ -1349,11 +1110,59 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
 
         @media (max-width: 768px) {
           .properties-grid {
-            grid-template-columns: 1fr;
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 0 10px 16px;
+            scroll-snap-type: x mandatory;
           }
+
+          .property-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.04);
+            min-height: 230px;
+            display: flex;
+            flex-direction: column;
+            min-width: 240px;
+            max-width: 260px;
+            flex: 0 0 auto;
+            scroll-snap-align: start;
+          }
+
+          .property-image {
+            min-height: 120px;
+            max-height: 140px;
+            padding: 14px 10px;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+          }
+
+          .property-details {
+            padding: 10px 10px 12px;
+            flex: 1;
+          }
+
+          .property-header {
+            gap: 6px;
+            margin-bottom: 4px;
+          }
+          .property-header h3 { font-size: 0.9rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+          .property-rent { font-size: 0.9rem; }
+          .property-address { font-size: 0.78rem; line-height: 1.2; }
+          .property-distance { font-size: 0.75rem; line-height: 1.2; }
+          .available-badge { padding: 5px 9px; font-size: 0.72rem; border-radius: 16px; }
+          .save-btn { width: 32px; height: 32px; font-size: 1.05rem; }
+          .property-icon { font-size: 2.4rem; }
+          .property-actions { display: none; }
+          .desktop-only { display: none; }
 
           .filters-section {
             grid-template-columns: 1fr;
+            padding: 16px;
+            gap: 12px;
           }
 
           .detail-grid,

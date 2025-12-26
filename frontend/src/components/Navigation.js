@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const Icon = ({ path, size = 22, className }) => (
   <svg 
@@ -30,6 +30,8 @@ const navItems = [
 
 const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAppearance, appearance }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [hideMobileNav, setHideMobileNav] = useState(false);
+  const lastScroll = useRef(0);
   
   const isLoggedIn = userProfile !== null;
   const isDashboardView = currentView === 'dashboard' || 
@@ -40,8 +42,6 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
                           currentView === 'saved-properties' ||
                           currentView === 'browse-properties' ||
                           currentView === 'settings';
-
-  if (!isLoggedIn || !isDashboardView) return null;
 
   const effectiveUserId = userProfile?.id || userProfile?.email || 'anon';
   const storedAvatar = (() => {
@@ -65,18 +65,30 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
     setShowProfileMenu(false);
   };
 
-  // Helper to get specific items for mobile bottom bar (usually roughly 4-5 items max)
+  // Hide bottom nav on scroll down (mobile)
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onScroll = () => {
+      const y = window.scrollY || 0;
+      const goingDown = y > lastScroll.current + 5;
+      const goingUp = y < lastScroll.current - 5;
+      if (goingDown) setHideMobileNav(true);
+      if (goingUp) setHideMobileNav(false);
+      lastScroll.current = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const mobileNavKeys = ['dashboard', 'browse-properties', 'roommate-matching', 'messages'];
   const mobileNavItems = navItems.filter(item => mobileNavKeys.includes(item.key));
+
+  if (!isLoggedIn || !isDashboardView) return null;
 
   return (
     <nav className="main-nav-wrapper">
       
-      {/* =========================================================
-          DESKTOP: TOP NAVBAR & SIDE RAIL
-          (Hidden on Mobile)
-      ========================================================== */}
-      
+      {/* DESKTOP NAV GROUP - Hidden completely on mobile */}
       <div className="desktop-nav-group">
         <div className="top-navbar">
           <div className="nav-brand" onClick={() => onNavigate('dashboard')}>
@@ -96,7 +108,6 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
               ) : avatarLetter}
             </div>
             
-            {/* Desktop Dropdown (Drops Down) */}
             {showProfileMenu && (
               <div className="profile-menu light desktop-menu">
                 <div className="menu-header-info">
@@ -148,13 +159,8 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
         </div>
       </div>
 
-      {/* =========================================================
-          MOBILE: BOTTOM NAVIGATION BAR
-          (Visible only on screens < 768px)
-      ========================================================== */}
-      
-      <div className="mobile-bottom-nav">
-        {/* Mobile Nav Items */}
+      {/* MOBILE BOTTOM NAV - Only on Mobile */}
+      <div className={`mobile-bottom-nav ${hideMobileNav ? 'hidden' : ''}`}>
         {mobileNavItems.map(item => (
           <button 
             key={item.key} 
@@ -165,7 +171,6 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
           </button>
         ))}
 
-        {/* Profile Avatar as the last item on Mobile */}
         <div className="mobile-profile-container">
           <button 
             className="mobile-nav-btn profile-btn"
@@ -178,7 +183,6 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
             </div>
           </button>
 
-          {/* Mobile Menu (Pops Up) */}
           {showProfileMenu && (
              <div className="profile-menu light mobile-menu-popup">
                 <div className="menu-header-info">
@@ -230,8 +234,7 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
           z-index: 900;
         }
 
-        .desktop-only { display: block; }
-        .mobile-bottom-nav { display: none; } /* Hidden by default */
+        .mobile-bottom-nav { display: none; }
 
         /* --- SHARED STYLES --- */
         .nav-brand { display: flex; align-items: baseline; gap: 12px; cursor: pointer; }
@@ -278,7 +281,6 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
         .rail-spacer { flex: 1; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-        /* Dark mode overrides */
         .dark-mode .nav-rail { background: #0f172a; box-shadow: 0 18px 38px rgba(0,0,0,0.35); }
         .dark-mode .rail-btn { color: #e5e7eb; }
         .dark-mode .rail-btn.active { background: #2563eb; }
@@ -287,10 +289,9 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
            MOBILE STYLES (Max-width 768px)
         ========================================================== */
         @media (max-width: 768px) {
-          /* Hide Desktop Nav Elements */
-          .desktop-nav-group { display: none; }
+          /* AGGRESSIVE HIDE of desktop elements to prevent spacing issues */
+          .desktop-nav-group { display: none !important; }
 
-          /* Show Bottom Nav */
           .mobile-bottom-nav {
             display: flex;
             align-items: center;
@@ -300,21 +301,33 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
             left: 50%;
             transform: translateX(-50%);
             width: 90%;
-            max-width: 400px;
-            height: 65px;
-            background: white;
-            border-radius: 35px; /* Rounded pill shape */
+            max-width: 380px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
             z-index: 2000;
             padding: 0 10px;
             box-sizing: border-box;
+            border: 1px solid rgba(255,255,255,0.7);
+            outline: 1px solid rgba(0,0,0,0.04);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+            will-change: transform, opacity;
+          }
+
+          .mobile-bottom-nav.hidden {
+            transform: translate(-50%, 90px);
+            opacity: 0;
+            pointer-events: none;
           }
 
           .mobile-nav-btn {
             background: none;
             border: none;
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -328,18 +341,11 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
             background: #fff0f3;
           }
 
-          .mobile-nav-btn:hover {
-            color: #fd5068;
-          }
-
-          /* Profile on Mobile */
-          .mobile-profile-container {
-            position: relative;
-          }
+          .mobile-profile-container { position: relative; }
 
           .mobile-avatar-circle {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             overflow: hidden;
             background: #e2e8f0;
@@ -355,13 +361,10 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
             border-color: #fd5068;
           }
 
-          .mobile-avatar-circle img {
-             width: 100%; height: 100%; object-fit: cover;
-          }
+          .mobile-avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
 
-          /* Mobile Menu Popup (Upwards) */
           .mobile-menu-popup {
-            bottom: 75px; /* Position above bottom bar */
+            bottom: 70px;
             right: -10px;
             top: auto;
             transform-origin: bottom right;

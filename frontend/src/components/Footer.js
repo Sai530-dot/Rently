@@ -144,7 +144,7 @@ const Footer = () => {
           padding-left: 5px;
         }
 
-        /* --- Social Icons (Pinterest Style) --- */
+        /* --- Social Icons --- */
         .social-links {
           display: flex;
           gap: 12px;
@@ -163,10 +163,7 @@ const Footer = () => {
           border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .social-icon svg {
-          width: 20px;
-          height: 20px;
-        }
+        .social-icon svg { width: 20px; height: 20px; }
 
         .social-icon:hover {
           background-color: #fd5068;

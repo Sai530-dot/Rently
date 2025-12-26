@@ -13,8 +13,6 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
   const [filteredListings, setFilteredListings] = useState([]);
   const [avgRent, setAvgRent] = useState(0);
   
-  // Removed profile menu state since it's now in Navigation
-
   const [profileForm, setProfileForm] = useState({
     avatar: userProfile?.avatar || '',
   });
@@ -139,10 +137,64 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
       setAvgRent(0);
     }
 
-    setFilteredListings(sortedListings.slice(0, 2));
+    setFilteredListings(sortedListings.slice(0, 5)); 
   }, [allListings, userPreferences]);
 
   const convKey = `rently_conversations_user_${effectiveUserId}`;
+
+  // Enable drag-to-swipe for horizontal tracks on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.innerWidth > 768) return undefined;
+
+    const tracks = document.querySelectorAll('.stats-grid, .listing-grid, .match-stack');
+    const cleanups = [];
+
+    tracks.forEach((el) => {
+      if (!el) return;
+      let isDown = false;
+      let startX = 0;
+      let scrollLeft = 0;
+
+      const start = (evt) => {
+        isDown = true;
+        startX = (evt.touches ? evt.touches[0].pageX : evt.pageX) || 0;
+        scrollLeft = el.scrollLeft;
+        el.style.cursor = 'grabbing';
+      };
+
+      const move = (evt) => {
+        if (!isDown) return;
+        const x = (evt.touches ? evt.touches[0].pageX : evt.pageX) || 0;
+        el.scrollLeft = scrollLeft - (x - startX);
+        if (evt.cancelable) evt.preventDefault();
+      };
+
+      const end = () => {
+        isDown = false;
+        el.style.cursor = 'grab';
+      };
+
+      el.addEventListener('mousedown', start);
+      el.addEventListener('touchstart', start, { passive: true });
+      el.addEventListener('mousemove', move);
+      el.addEventListener('touchmove', move, { passive: false });
+      el.addEventListener('mouseleave', end);
+      el.addEventListener('mouseup', end);
+      el.addEventListener('touchend', end);
+
+      cleanups.push(() => {
+        el.removeEventListener('mousedown', start);
+        el.removeEventListener('touchstart', start);
+        el.removeEventListener('mousemove', move);
+        el.removeEventListener('touchmove', move);
+        el.removeEventListener('mouseleave', end);
+        el.removeEventListener('mouseup', end);
+        el.removeEventListener('touchend', end);
+      });
+    });
+
+    return () => cleanups.forEach((fn) => fn && fn());
+  }, []);
 
   const handleConnect = (matchProfile) => {
     const existingConvs = JSON.parse(localStorage.getItem(convKey) || '[]');
@@ -168,10 +220,8 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
 
   return (
     <div className={`dashboard-wrapper ${isDarkMode ? 'dark' : 'light'}`}>
-      
-      {/* Top Navbar Removed (Now in Navigation.js) */}
-
       <main className="main-feed">
+        {/* --- DASHBOARD HEADER (Centered on Mobile) --- */}
         <header className="feed-header">
           <div>
             <h1>Dashboard</h1>
@@ -181,6 +231,7 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
           </div>
         </header>
 
+        {/* --- STATS GRID (Horizontal Scroll & Centered Text on Mobile) --- */}
         <div className="stats-grid">
           <div className="glass-card stat-card">
             <div className="stat-label">Your Budget</div>
@@ -218,6 +269,7 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
           </div>
         </div>
 
+        {/* --- LISTINGS (Horizontal Scroll & Centered Text on Mobile) --- */}
         <section className="section-block">
           <div className="section-header">
             <h3>{`Homes under $${getBudgetCap()}`}</h3>
@@ -276,9 +328,10 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
           </div>
         </section>
 
+        {/* --- MATCHES (Horizontal Scroll & Centered Text on Mobile) --- */}
         <section className="section-block">
           <div className="section-header">
-            <h3>Recent Roommate Matches</h3>
+            <h3>Recent Matches</h3>
             <button 
               className="link-btn" 
               onClick={() => onNavigate('roommate-matching')}
@@ -347,6 +400,7 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
         }
         .glass-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
 
+        /* --- Default Desktop Grid --- */
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -393,6 +447,7 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
         .primary-btn:hover { opacity: 0.9; }
         .empty-matches { text-align: center; padding: 30px; color: #9CA3AF; font-style: italic; background: white; border-radius: 12px; }
 
+        /* Dark Mode */
         .dashboard-wrapper.dark {
           background-color: #0f172a;
           color: #e5e7eb;
@@ -421,13 +476,154 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, appearance = 'lig
         .dashboard-wrapper.dark .progress-bg { background: rgba(255,255,255,0.08); }
         .dashboard-wrapper.dark .tag-pill { background: #1f2937; color: #d1d5db; }
         .dashboard-wrapper.dark .tag-pill.muted { background: #374151; color: #e5e7eb; }
-        
         .dashboard-wrapper.dark .primary-btn { background: #2563eb; }
         .dashboard-wrapper.dark .link-btn { color: #60a5fa; }
 
+        /* =========================================================
+           MOBILE OPTIMIZATIONS (Scrollable Sideways + Centered)
+        ========================================================== */
         @media (max-width: 768px) {
-           .main-feed { padding: 20px; }
-           .feed-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+           .dashboard-wrapper {
+             padding-bottom: 90px; /* Space for Bottom Nav */
+             align-items: center;  /* Keep layout centered like Pinterest mobile */
+           }
+           .main-feed { 
+             padding: 14px; 
+             max-width: 520px; 
+             width: 100%;
+             margin: 0 auto; 
+             text-align: center; /* CENTER ALIGNMENT FOR CONTAINER */
+           }
+           /* CENTER THE HEADER */
+           .feed-header { 
+             flex-direction: column; 
+             align-items: center; 
+             justify-content: center;
+             gap: 6px; 
+             text-align: center; 
+             margin-bottom: 22px;
+           }
+           .feed-header h1 { font-size: 1.35rem; }
+           .date-display { font-size: 0.85rem; }
+
+           /* Global text sizing tweaks */
+           .stat-label,
+           .trend-up,
+           .link-btn,
+           .location-line,
+           .muted-line,
+           .no-matches-text,
+           .text-btn { font-size: 0.82rem; }
+           .stat-val { font-size: 1.6rem; }
+           .section-header h3 { font-size: 1.05rem; }
+           .card-content h4,
+           .match-details h4 { font-size: 0.98rem; }
+           .price-tag { font-size: 1rem; }
+           .primary-btn { padding: 10px 16px; font-size: 0.95rem; }
+           .tag-pill { font-size: 0.7rem; }
+
+           /* SECTION HEADERS */
+           .section-header {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             padding: 0 5px; /* Slight padding to align with scrolled content */
+           }
+           
+           /* --- 1. HORIZONTAL STATS --- */
+           .stats-grid {
+             display: flex;
+             overflow-x: auto;
+             scroll-snap-type: x mandatory;
+             scroll-behavior: smooth;
+             gap: 15px;
+             margin: 0 0 26px 0;
+             padding: 0 18px 10px 18px; /* Padding for scroll end & scrollbar space */
+             justify-content: flex-start;
+             scroll-padding-left: 18px; /* ensure first card is fully visible */
+             cursor: grab;
+           }
+           .stat-card {
+             min-width: 210px; 
+             scroll-snap-align: center; /* Snap to center */
+             text-align: center; /* Center text inside card */
+             align-items: center;
+             padding: 18px;
+           }
+           .avatar-group { justify-content: center; padding-left: 0; }
+           .mini-avatar { margin: 0 -4px; }
+           .trend-up { justify-content: center; }
+
+           /* --- 2. HORIZONTAL LISTINGS --- */
+           .listing-grid {
+             display: flex;
+             overflow-x: auto;
+             scroll-snap-type: x mandatory;
+             scroll-behavior: smooth;
+             gap: 15px;
+             margin: 0 0 26px 0;
+             padding: 0 18px 10px 18px;
+             justify-content: flex-start;
+             scroll-padding-left: 18px; /* ensure first card is fully visible */
+             cursor: grab;
+           }
+           .listing-card {
+             min-width: 230px;
+             scroll-snap-align: center;
+             text-align: center; /* Center text */
+           }
+           .card-content { align-items: center; padding: 12px; }
+           .tag-row { justify-content: center; }
+
+           /* --- 3. HORIZONTAL MATCHES --- */
+           .match-stack {
+             display: flex;
+             flex-direction: row; 
+             overflow-x: auto;
+             scroll-snap-type: x mandatory;
+             scroll-behavior: smooth;
+             gap: 15px;
+             margin: 0 0 26px 0;
+             padding: 0 18px 10px 18px;
+             justify-content: flex-start;
+             scroll-padding-left: 18px; /* ensure first card is fully visible */
+             cursor: grab;
+           }
+           .match-row {
+             min-width: 210px;
+             flex-direction: column; 
+             align-items: center;
+             text-align: center;
+             padding: 16px;
+             scroll-snap-align: center;
+           }
+           .match-avatar {
+             width: 54px;
+             height: 54px;
+             font-size: 1.35rem;
+             margin-bottom: 10px;
+           }
+           .match-details {
+             margin-bottom: 15px;
+             width: 100%;
+           }
+           .match-details h4 { margin-bottom: 4px; }
+           .primary-btn { width: 100%; }
+
+           /* Hide scrollbars */
+           .stats-grid::-webkit-scrollbar,
+           .listing-grid::-webkit-scrollbar,
+           .match-stack::-webkit-scrollbar {
+             display: none;
+           }
+
+           /* Touch swipe helper */
+           .stats-grid,
+           .listing-grid,
+           .match-stack {
+             touch-action: pan-y;
+             -webkit-overflow-scrolling: touch;
+           }
         }
       `}</style>
     </div>
