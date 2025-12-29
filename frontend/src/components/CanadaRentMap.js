@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import PropertyMap from './PropertyMap'; 
-// import Footer from './Footer'; 
 import realListings from '../data/real_listings.json';
 import craigslistData from '../data/craigslist_listings.json';
 import kijijiData from '../data/kijiji_listings.json';
 
 const ALL_LISTINGS = [...craigslistData, ...kijijiData, ...realListings];
 
-// Normalize Data
+// --- NEW PREMIUM PLACEHOLDER ---
+const PropertyPlaceholder = () => (
+  <div className="card-placeholder">
+    {/* Soft Gradient Background is handled in CSS below */}
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+      {/* Duotone Style: One part opaque, one part transparent */}
+      <path d="M3 9.5L12 3L21 9.5" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M19 10V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V10" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path opacity="0.4" d="M9 21V15C9 14.4477 9.44772 14 10 14H14C14.5523 14 15 14.4477 15 15V21" fill="#94a3b8"/>
+    </svg>
+  </div>
+);
+
 const normalizeListing = (item) => {
   const address = item.address || item.location || '';
   let province = item.province;
@@ -28,7 +39,7 @@ const normalizeListing = (item) => {
     province: province,
     city: city,
     rent: item.rent || item.avgRent || item.price || 0,
-    image: item.image || '🏠'
+    image: item.image 
   };
 };
 
@@ -37,28 +48,14 @@ const CanadaRentMap = ({ onBack }) => {
   const [filterProvince, setFilterProvince] = useState('All');
   const [selectedPropertyId, setSelectedPropertyId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const cardRefs = useRef({}); 
-  const searchWrapperRef = useRef(null);
 
   useEffect(() => {
     const normalized = ALL_LISTINGS.map(normalizeListing);
     setListings(normalized);
   }, []);
 
-  // Close Autocomplete on Click Outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Filter Data
   const filteredData = useMemo(() => {
     let data = listings;
     if (filterProvince !== 'All') data = data.filter(item => item.province === filterProvince);
@@ -72,268 +69,225 @@ const CanadaRentMap = ({ onBack }) => {
     return data;
   }, [listings, filterProvince, searchTerm]);
 
-  // Suggestions
-  const locationOptions = useMemo(() => {
-    const locs = new Set();
-    listings.forEach(l => { if (l.city && l.province) locs.add(`${l.city}, ${l.province}`); });
-    return Array.from(locs).sort();
-  }, [listings]);
-
-  const suggestions = useMemo(() => {
-    if (!searchTerm || searchTerm.length < 2) return [];
-    return locationOptions.filter(loc => loc.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [searchTerm, locationOptions]);
-
-  const handleSearchSelect = (loc) => {
-    setSearchTerm(loc);
-    setShowSuggestions(false);
-    const parts = loc.split(',');
-    const prov = parts[1] ? parts[1].trim() : '';
-    if (['ON', 'BC', 'SK'].includes(prov)) setFilterProvince(prov);
-    else setFilterProvince('All');
-  };
-
   const handleMarkerClick = (id) => {
     setSelectedPropertyId(id);
     const card = cardRefs.current[id];
     if (card) {
       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      card.classList.add('highlight-flash');
-      setTimeout(() => card.classList.remove('highlight-flash'), 1000);
+      card.classList.add('flash-active');
+      setTimeout(() => card.classList.remove('flash-active'), 1000);
     }
-  };
-
-  // NEW: Reset logic when clicking map background or "Reset View" button
-  const handleResetView = () => {
-    setSelectedPropertyId(null);
   };
 
   const provinces = ['All', 'ON', 'BC', 'SK'];
 
   return (
-    <div className="canada-rent-map-wrapper">
-      <div className="canada-rent-map-container">
-        {/* --- Header Section (Fixed Top) --- */}
-        <div className="map-header">
-          <div className="header-top">
-            <button className="back-btn" onClick={onBack}>← Back</button>
-            <h1>🇨🇦 Canada Rent Map</h1>
-            
-            <div className="search-container" ref={searchWrapperRef}>
-              <div className="search-input-wrapper">
-                <span className="search-icon">🔍</span>
-                <input 
-                  type="text" 
-                  placeholder="Search city..." 
-                  value={searchTerm}
-                  onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
-                  onFocus={() => setShowSuggestions(true)}
-                  className="search-input"
-                />
-                {searchTerm && <button className="clear-search" onClick={() => setSearchTerm('')}>✕</button>}
-              </div>
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="autocomplete-dropdown">
-                  {suggestions.map((loc, idx) => (
-                    <div key={idx} className="autocomplete-item" onClick={() => handleSearchSelect(loc)}>📍 {loc}</div>
-                  ))}
-                </div>
-              )}
+    <div className="rent-map-wrapper">
+      
+      <div className="map-layer">
+        <PropertyMap 
+          properties={filteredData} 
+          selectedPropertyId={selectedPropertyId}
+          onMarkerClick={handleMarkerClick}
+          onMapClick={() => setSelectedPropertyId(null)}
+        />
+      </div>
+
+      <div className="floating-sidebar">
+        <div className="sidebar-header">
+          <div className="header-row">
+            <button className="icon-btn back-btn" onClick={onBack}>←</button>
+            <div className="search-bar">
+        
+               <input 
+                 type="text" 
+                 placeholder="Search city..." 
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+               />
             </div>
           </div>
+
+          <div className="filter-pills">
+            {provinces.map(prov => (
+              <button
+                key={prov}
+                className={`pill ${filterProvince === prov ? 'active' : ''}`}
+                onClick={() => setFilterProvince(prov)}
+              >
+                {prov}
+              </button>
+            ))}
+          </div>
           
-          <div className="controls-row">
-            <div className="province-filters">
-              {provinces.map(prov => (
-                <button
-                  key={prov}
-                  className={`filter-btn ${filterProvince === prov ? 'active' : ''}`}
-                  onClick={() => { setFilterProvince(prov); setSearchTerm(''); setSelectedPropertyId(null); }}
-                >
-                  {prov}
-                </button>
-              ))}
-            </div>
-            <div className="stats-bar">
-               <span className="value">{filteredData.length}</span> <span className="label">Listings</span>
-            </div>
+          <div className="results-count">
+            Showing {filteredData.length} properties
           </div>
         </div>
 
-        {/* --- Main Content --- */}
-        <div className="main-content">
-          <div className="list-pane">
-            <div className="list-content">
-              {filteredData.length === 0 ? (
-                <div className="empty-state"><h3>No matches</h3></div>
-              ) : (
-                <div className="listings-list">
-                  {filteredData.map(property => (
-                    <div 
-                      key={property.id}
-                      ref={el => cardRefs.current[property.id] = el}
-                      className={`listing-card-horizontal ${selectedPropertyId === property.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedPropertyId(property.id)}
-                    >
-                      <div className="card-image-wrapper">
-                        {property.image.startsWith('http') ? <img src={property.image} alt="" /> : <div className="emoji-placeholder">{property.image}</div>}
-                        <span className="price-badge-small">${property.rent}</span>
-                      </div>
-                      <div className="card-details">
-                        <div className="card-top"><h3>{property.title}</h3><span className="rent-highlight">${property.rent}</span></div>
-                        <p className="address-text">{property.address}</p>
-                        <div className="specs-row"><span>🛏 {property.bedrooms} Bd</span><span>📍 {property.province}</span></div>
-                      </div>
-                    </div>
-                  ))}
+        <div className="listings-container">
+          {filteredData.map(property => {
+             const hasImage = property.image && property.image.startsWith('http');
+             return (
+              <div 
+                key={property.id}
+                ref={el => cardRefs.current[property.id] = el}
+                className={`listing-card ${selectedPropertyId === property.id ? 'active-card' : ''}`}
+                onClick={() => setSelectedPropertyId(property.id)}
+              >
+                <div className="card-img-wrapper">
+                  {hasImage ? (
+                    <img src={property.image} alt="Property" className="card-img" />
+                  ) : (
+                    <PropertyPlaceholder />
+                  )}
+                  <div className="price-tag">${property.rent}</div>
                 </div>
-              )}
-            </div>
-            {/* Footer Placeholder */}
-            <div className="list-footer-wrapper"><div style={{padding:'20px',textAlign:'center',color:'#ccc'}}>Rently © 2025</div></div>
-          </div>
 
-          <div className="map-pane">
-            <PropertyMap 
-              properties={filteredData} 
-              selectedPropertyId={selectedPropertyId}
-              onMarkerClick={handleMarkerClick}
-              onMapClick={handleResetView} // Handles background click
-            />
-            
-            {/* NEW: Floating Reset Button */}
-            {selectedPropertyId && (
-              <button className="reset-view-btn" onClick={handleResetView}>
-                ✕ Clear Selection
-              </button>
-            )}
-          </div>
+                <div className="card-info">
+                  <h3>{property.title}</h3>
+                  <p className="location">{property.city}, {property.province}</p>
+                  <div className="meta-row">
+                      <span>🛏 {property.bedrooms} Bd</span>
+                      {property.sqft && <span>📏 {property.sqft} ft²</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filteredData.length === 0 && <div className="empty-msg">No results found in this area.</div>}
         </div>
       </div>
 
       <style>{`
-        /* --- CORE LAYOUT --- */
-        .canada-rent-map-wrapper {
-          position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
-          background: #fff; z-index: 50; display: flex; flex-direction: column;
+        .rent-map-wrapper {
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          overflow: hidden;
+          font-family: 'Inter', -apple-system, sans-serif;
+          background: #f0f0f0;
         }
-        .canada-rent-map-container { display: flex; flex-direction: column; height: 100%; }
-
-        /* --- HEADER (Kept visible) --- */
-        .map-header {
-          background: white; padding: 12px 20px; border-bottom: 1px solid #e0e0e0;
-          z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0;
+        .map-layer {
+          position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+          z-index: 1; 
         }
-        .header-top { display: flex; align-items: center; gap: 20px; margin-bottom: 12px; }
-        .header-top h1 { margin: 0; font-size: 1.4rem; white-space: nowrap; }
-        .back-btn { padding: 6px 12px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 6px; cursor: pointer; font-weight: 600; }
-        .search-container { position: relative; flex: 1; max-width: 400px; }
-        .search-input { width: 100%; padding: 8px 35px; border: 1px solid #ddd; border-radius: 20px; background: #f9f9f9; }
-        .search-icon { position: absolute; left: 12px; top: 8px; color: #999; }
-        .clear-search { position: absolute; right: 12px; top: 8px; border: none; background: none; cursor: pointer; color: #999; }
-        .autocomplete-dropdown { position: absolute; top: 110%; left: 0; right: 0; background: white; border: 1px solid #eee; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 200px; overflow-y: auto; z-index: 1000; }
-        .autocomplete-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f5f5f5; }
-        .autocomplete-item:hover { background: #f0f7ff; color: #fd5068; }
-        
-        .controls-row { display: flex; justify-content: space-between; align-items: center; }
-        .province-filters { display: flex; gap: 8px; }
-        .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #eee; background: #f5f5f5; cursor: pointer; }
-        .filter-btn.active { background: #333; color: white; border-color: #333; }
-        .stats-bar { font-size: 0.85rem; color: #666; background: #f9f9f9; padding: 4px 12px; border-radius: 12px; font-weight: bold; }
-
-        /* --- MAIN CONTENT --- */
-        .main-content { display: flex; flex: 1; overflow: hidden; flex-direction: row; }
-        
-        /* List Side */
-        .list-pane { width: 420px; height: 100%; overflow-y: auto; border-right: 1px solid #e0e0e0; background: #fff; display: flex; flex-direction: column; flex-shrink: 0; }
-        .list-content { flex: 1; padding: 15px; }
-        .listings-list { display: flex; flex-direction: column; gap: 12px; }
-        .list-footer-wrapper { margin-top: auto; background: #f9f9f9; }
-
-        /* Card Styles */
-        .listing-card-horizontal { display: flex; background: white; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; cursor: pointer; height: 110px; transition: all 0.2s; }
-        .listing-card-horizontal:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #ccc; }
-        .listing-card-horizontal.selected { border: 2px solid #fd5068; background: #fffafa; }
-        .highlight-flash { animation: flash 1s ease; }
-        @keyframes flash { 0% { background-color: rgba(253, 80, 104, 0.2); } 100% { background-color: white; } }
-        
-        .card-image-wrapper { width: 130px; min-width: 130px; position: relative; background: #eee; }
-        .card-image-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-        .emoji-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: #f0f0f0; }
-        .price-badge-small { position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.75); color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
-        .card-details { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-        .card-top h3 { margin: 0; font-size: 0.95rem; color: #333; line-height: 1.2; max-height: 2.4em; overflow: hidden; }
-        .rent-highlight { color: #fd5068; font-weight: 700; font-size: 1rem; margin-left: 8px; }
-        .address-text { font-size: 0.8rem; color: #666; margin: 0 0 8px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .specs-row { display: flex; gap: 10px; font-size: 0.75rem; color: #888; margin-top: auto; }
-
-        /* Map Side */
-        .map-pane { flex: 1; height: 100%; position: relative; }
-        
-        /* Floating Reset Button */
-        .reset-view-btn {
-          position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-          background: white; color: #333; border: none; padding: 10px 20px;
-          border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          cursor: pointer; z-index: 1000; display: flex; align-items: center; gap: 8px;
+        .floating-sidebar {
+          position: absolute;
+          top: 20px; 
+          left: 100px; 
+          bottom: 20px;
+          width: 380px;
+          background: rgba(255, 255, 255, 0.90);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-radius: 24px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          border: 1px solid rgba(255,255,255,0.4);
+          overflow: hidden;
+        }
+        .sidebar-header {
+          padding: 20px;
+          background: rgba(255,255,255,0.5);
+          border-bottom: 1px solid rgba(0,0,0,0.05);
+          flex-shrink: 0;
+        }
+        .header-row { display: flex; gap: 12px; margin-bottom: 16px; }
+        .icon-btn {
+          width: 40px; height: 40px; border-radius: 50%; border: none;
+          background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
           transition: transform 0.2s;
         }
-        .reset-view-btn:hover { transform: translateX(-50%) scale(1.05); }
-
-        /* --- DARK MODE OVERRIDES --- */
-        .dark-mode .canada-rent-map-wrapper { background: #0b1224; }
-        .dark-mode .map-header { background: #0f172a; border-bottom: 1px solid rgba(255,255,255,0.08); box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
-        .dark-mode .header-top h1 { color: #e5e7eb; }
-        .dark-mode .back-btn { background: #0b1224; border-color: rgba(255,255,255,0.12); color: #e5e7eb; }
-        .dark-mode .search-input-wrapper { background: #0b1224; border-radius: 20px; border: 1px solid rgba(255,255,255,0.12); }
-        .dark-mode .search-input { background: transparent; color: #e5e7eb; border: none; }
-        .dark-mode .search-icon, .dark-mode .clear-search { color: #9ca3af; }
-        .dark-mode .autocomplete-dropdown { background: #0f172a; border-color: rgba(255,255,255,0.12); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-        .dark-mode .autocomplete-item { color: #e5e7eb; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        .dark-mode .autocomplete-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
-        .dark-mode .controls-row { color: #e5e7eb; }
-        .dark-mode .filter-btn { background: #0b1224; color: #e5e7eb; border-color: rgba(255,255,255,0.12); }
-        .dark-mode .filter-btn.active { background: #2563eb; border-color: #2563eb; }
-        .dark-mode .stats-bar { background: #0b1224; color: #e5e7eb; border: 1px solid rgba(255,255,255,0.12); }
-
-        .dark-mode .main-content { background: #0b1224; }
-        .dark-mode .list-pane { background: #0f172a; border-right: 1px solid rgba(255,255,255,0.08); }
-        .dark-mode .list-content { background: #0f172a; }
-        .dark-mode .list-footer-wrapper { background: #0b1224; color: #9ca3af; }
-        .dark-mode .listing-card-horizontal { background: #0b1224; border-color: rgba(255,255,255,0.08); color: #e5e7eb; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-        .dark-mode .listing-card-horizontal:hover { border-color: rgba(255,255,255,0.2); }
-        .dark-mode .listing-card-horizontal.selected { border-color: #60a5fa; background: #0f172a; }
-        .dark-mode .card-image-wrapper { background: #111827; }
-        .dark-mode .emoji-placeholder { background: #1f2937; color: #e5e7eb; }
-        .dark-mode .price-badge-small { background: rgba(0,0,0,0.6); }
-        .dark-mode .card-top h3 { color: #e5e7eb; }
-        .dark-mode .rent-highlight { color: #f472b6; }
-        .dark-mode .address-text, .dark-mode .specs-row { color: #cbd5e1; }
-
-        .dark-mode .map-pane { background: #0b1224; }
-        .dark-mode .reset-view-btn { background: #0f172a; color: #e5e7eb; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-
-        /* Leaflet tiles & controls */
-        .dark-mode .leaflet-pane .leaflet-tile { filter: grayscale(0.2) invert(0.9) brightness(0.6) saturate(0.8); }
-        .dark-mode .leaflet-control-container .leaflet-top .leaflet-control,
-        .dark-mode .leaflet-control-container .leaflet-left .leaflet-control {
-          background: #0f172a;
-          color: #e5e7eb;
-          border: 1px solid rgba(255,255,255,0.2);
-          box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+        .icon-btn:hover { transform: scale(1.05); }
+        .search-bar { flex: 1; position: relative;  }
+        .search-bar input {
+          width: 100%; height: 40px; padding: 0 15px 0 40px;
+          border-radius: 20px; border: none;
+          background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          font-size: 0.95rem; outline: none;
         }
-        .dark-mode .leaflet-bar a { color: #e5e7eb; }
-        .dark-mode .leaflet-bar a:hover { background: rgba(255,255,255,0.08); }
-
-        @media (max-width: 900px) {
-          .canada-rent-map-wrapper { position: relative; top: 0; height: auto; }
-          .main-content { flex-direction: column; }
-          .map-pane { height: 45vh; order: 1; }
-          .list-pane { width: 100%; height: auto; order: 2; border-right: none; border-top: 1px solid #ddd; }
-          .list-footer-wrapper { display: none; }
-          .search-container { max-width: 100%; width: 100%; order: 3; margin-top: 10px; }
-          .header-top { flex-wrap: wrap; }
+        .search-icon { position: absolute; left: 12px; top: 10px; opacity: 0.5; }
+        .filter-pills { display: flex; gap: 8px; margin-bottom: 10px; }
+        .pill {
+          padding: 6px 16px; border-radius: 20px; border: none;
+          background: white; color: #555; font-weight: 600; cursor: pointer;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+          transition: all 0.2s;
+        }
+        .pill:hover { background: #f0f0f0; }
+        .pill.active { background: #222; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .results-count { font-size: 0.8rem; color: #888; font-weight: 600; margin-left: 4px; }
+        .listings-container {
+          flex: 1; overflow-y: auto; padding: 15px;
+          scrollbar-width: thin;
+        }
+        .listings-container::-webkit-scrollbar { width: 6px; }
+        .listings-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+        .listing-card {
+          display: flex; gap: 12px;
+          background: white;
+          border-radius: 16px;
+          padding: 10px;
+          margin-bottom: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 1px solid transparent;
+        }
+        .listing-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        .listing-card.active-card {
+          border: 2px solid #222;
+          background: #fafafa;
+        }
+        .flash-active { animation: flash 0.6s ease; }
+        @keyframes flash { 0% { background: #ffeb3b; } 100% { background: #fafafa; } }
+        .card-img-wrapper {
+          width: 100px; height: 90px;
+          border-radius: 12px;
+          position: relative;
+          overflow: hidden;
+          flex-shrink: 0;
+          background: #f5f5f5;
+        }
+        .card-img { width: 100%; height: 100%; object-fit: cover; }
+        /* Professional Placeholder Style */
+/* Professional Placeholder Style */
+        .card-placeholder {
+          width: 100%; height: 100%; 
+          display: flex; align-items: center; justify-content: center;
+          /* Subtle premium gradient instead of flat grey */
+          background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
+        .price-tag {
+          position: absolute; bottom: 6px; left: 6px;
+          background: rgba(0,0,0,0.8); color: white;
+          font-size: 0.75rem; font-weight: 700;
+          padding: 3px 8px; border-radius: 8px;
+        }
+        .card-info {
+          flex: 1; display: flex; flex-direction: column; justify-content: center;
+          min-width: 0;
+        }
+        .card-info h3 {
+          margin: 0 0 4px 0; font-size: 0.95rem; color: #222; line-height: 1.3;
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .location { margin: 0 0 8px 0; font-size: 0.8rem; color: #888; }
+        .meta-row { 
+          display: flex; gap: 12px; font-size: 0.75rem; color: #555; font-weight: 600; 
+          background: #f4f4f4; padding: 4px 10px; border-radius: 8px; align-self: flex-start;
+        }
+        .empty-msg { text-align: center; color: #999; margin-top: 40px; }
+        @media (max-width: 700px) {
+          .floating-sidebar {
+            top: auto; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 50vh;
+            border-radius: 24px 24px 0 0;
+          }
         }
       `}</style>
     </div>

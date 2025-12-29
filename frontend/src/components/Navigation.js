@@ -83,47 +83,14 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
   const mobileNavKeys = ['dashboard', 'browse-properties', 'roommate-matching', 'messages'];
   const mobileNavItems = navItems.filter(item => mobileNavKeys.includes(item.key));
 
-  if (!isLoggedIn || !isDashboardView) return null;
+  // Hide when logged out; show on all views for logged-in users
+  if (!isLoggedIn) return null;
 
   return (
     <nav className="main-nav-wrapper">
       
       {/* DESKTOP NAV GROUP - Hidden completely on mobile */}
       <div className="desktop-nav-group">
-        <div className="top-navbar">
-          <div className="nav-brand" onClick={() => onNavigate('dashboard')}>
-            <span className="brand-name">Rently</span>
-            <span className="brand-tagline">Find Your Perfect Match</span>
-          </div>
-          
-          <div className="user-profile-snippet" onClick={handleProfileMenuToggle}>
-            <div className="greeting-text">Hi, {firstName}!</div>
-            <div className="user-avatar-circle">
-              {avatarUrl ? (
-                <img 
-                  src={avatarUrl} 
-                  alt="avatar" 
-                  style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} 
-                />
-              ) : avatarLetter}
-            </div>
-            
-            {showProfileMenu && (
-              <div className="profile-menu light desktop-menu">
-                <div className="menu-header-info">
-                  <div className="menu-name">{firstName}</div>
-                  <div className="menu-role">Student</div>
-                </div>
-                <div className="menu-divider" />
-                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onNavigate('settings'); setShowProfileMenu(false); }}>Settings</div>
-                <div className="menu-item" onClick={(e) => { e.stopPropagation(); handleAppearanceToggle(); }}>Switch appearance ({appearance})</div>
-                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onNavigate('messages'); setShowProfileMenu(false); }}>Messages</div>
-                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onNavigate('roommate-matching'); setShowProfileMenu(false); }}>Roommates</div>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="nav-rail">
           {navItems.map(item => {
             if (item.key === 'theme-toggle') {
@@ -208,15 +175,16 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
         /* --- DESKTOP STYLES --- */
         .top-navbar {
           height: 60px;
-          background: linear-gradient(90deg, #fd5068 0%, #ff6b9d 100%);
+          background: #ffffff;
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 0 40px;
-          color: white;
-          box-shadow: 0 4px 12px rgba(253, 80, 104, 0.2);
+          color: #0f172a;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
           width: 100%;
           box-sizing: border-box;
+          border-bottom: 1px solid #e5e7eb;
         }
 
         .nav-rail {
@@ -237,7 +205,7 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
         .mobile-bottom-nav { display: none; }
 
         /* --- SHARED STYLES --- */
-        .nav-brand { display: flex; align-items: baseline; gap: 12px; cursor: pointer; }
+        .nav-brand { display: flex; align-items: baseline; gap: 12px; cursor: pointer; color: inherit; }
         .nav-brand:hover { opacity: 0.9; }
         .brand-name { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
         .brand-tagline { font-size: 0.85rem; opacity: 0.9; font-weight: 500; }

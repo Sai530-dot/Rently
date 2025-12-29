@@ -320,7 +320,8 @@ function App() {
       )}
       <div className={isAuthView ? 'auth-container' : 'main-content'}>
         {renderCurrentView()}
-        {!isAuthView && <Footer />}
+        {/* Only show Footer if NOT in auth view AND NOT in map view */}
+        {!isAuthView && currentView !== 'rent-map' && <Footer />}
       </div>
     </div>
   );

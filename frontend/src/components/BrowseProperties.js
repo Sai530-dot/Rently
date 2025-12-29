@@ -1,85 +1,148 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { API_BASE_URL } from '../config';
 import realListings from '../data/real_listings.json';
 import craigslistData from '../data/craigslist_listings.json';
 import kijijiData from '../data/kijiji_listings.json';
 
-const ALL_LISTINGS = [...craigslistData, ...kijijiData];
+const ALL_LISTINGS = [...craigslistData, ...kijijiData, ...realListings];
 
+// --- ICONS ---
+// Using strokes that match standard slate/grey palettes for a professional look
+const iconStroke = "#64748b"; 
 
+const Icons = {
+  PriceIcon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>,
+  TypeIcon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="12" y1="22" x2="12" y2="22.01"></line><rect x="8" y="6" width="8" height="12" rx="1"></rect></svg>,
+  LocationIcon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>,
+  RoomsIcon: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={iconStroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4 8 4v14M8 21v-8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v8"></path></svg>,
+  Bed: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>,
+  Bath: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-1.5C3.5 2 2 3.5 2 5.5A2.5 2.5 0 0 0 4.5 8h.5"></path><path d="M21 16.5A2.5 2.5 0 0 1 18.5 19h-13a2.5 2.5 0 0 1-2.5-2.5V12h18v4.5z"></path><path d="M10 12v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M21 12v3"></path></svg>,
+  Sqft: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"></path><path d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"></path><path d="M17 22a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"></path></svg>,
+  Pin: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>,
+  // NEW: A cleaner, more professional architectural placeholder
+  Placeholder: () => (
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      <path d="M2 10h20" strokeOpacity="0.2"></path>
+    </svg>
+  )
+};
 
 const BrowseProperties = ({ onBack, userPreferences }) => {
   const [properties, setProperties] = useState(realListings.length > 0 ? realListings : []);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedProperty, setSelectedProperty] = useState(null);
-  const [filterBedrooms, setFilterBedrooms] = useState('all');
-  const [filterMaxRent, setFilterMaxRent] = useState(userPreferences?.budget || 3000);
-  const [filterLocation, setFilterLocation] = useState('all');
+  
+  // Filters
+  const [priceRange, setPriceRange] = useState([500, 5000]); 
+  const [selectedTypes, setSelectedTypes] = useState(['Apartment']);
+  const [selectedLocations, setSelectedLocations] = useState(['Saskatoon']);
+  const [selectedRooms, setSelectedRooms] = useState([]);
   const [sortBy, setSortBy] = useState('rent-low');
+  
+  // Modals & User Data
   const [savedProperties, setSavedProperties] = useState([]);
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactProperty, setContactProperty] = useState(null);
-  const [contactForm, setContactForm] = useState({
-    message: '',
-    moveInDate: ''
-  });
+  const [contactForm, setContactForm] = useState({ message: '', moveInDate: '' });
 
-  const userCity = userPreferences?.location?.city || 
-                   userPreferences?.location?.formatted?.split(',')[0] || 
-                   'Toronto';
+  const userCity = userPreferences?.location?.city || 'Toronto';
 
   useEffect(() => {
     fetchProperties();
     loadSavedProperties();
+    if (userPreferences?.location?.city) {
+      setSelectedLocations([userPreferences.location.city]);
+    }
   }, []);
 
   const loadSavedProperties = () => {
     const saved = JSON.parse(localStorage.getItem('rently_saved_properties') || '[]');
-    const savedIds = saved.map(p => p.id);
-    setSavedProperties(savedIds);
+    setSavedProperties(saved.map(p => p.id));
   };
 
- const fetchProperties = () => {
+  const fetchProperties = () => {
     setLoading(true);
-    setError(null);
-    
     fetch(`${API_BASE_URL}/properties`)
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => {
-        if (data.success && data.properties) {
-          setProperties(data.properties);
-          setLoading(false);
-        } else {
-          throw new Error('No properties found on server');
-        }
+        if (data.success && data.properties) setProperties(data.properties);
       })
-      .catch(err => {
-        if (ALL_LISTINGS && ALL_LISTINGS.length > 0) {
-          setProperties(ALL_LISTINGS);
-          setError(null);
-        } else {
-          setProperties([]);
-        }
-        setLoading(false);
-      });
+      .catch(() => setProperties(ALL_LISTINGS))
+      .finally(() => setLoading(false));
+  };
+
+  // --- Handlers ---
+  const handleTypeChange = (type) => {
+    if (selectedTypes.includes(type)) setSelectedTypes(selectedTypes.filter(t => t !== type));
+    else setSelectedTypes([...selectedTypes, type]);
+  };
+
+  const handleLocationChange = (loc) => {
+    if (selectedLocations.includes(loc)) setSelectedLocations(selectedLocations.filter(l => l !== loc));
+    else setSelectedLocations([...selectedLocations, loc]);
+  };
+
+  const handleRoomToggle = (num) => {
+    if (selectedRooms.includes(num)) setSelectedRooms(selectedRooms.filter(n => n !== num));
+    else setSelectedRooms([...selectedRooms, num]);
+  };
+
+  const handleClearAll = () => {
+    setPriceRange([0, 10000]);
+    setSelectedTypes([]);
+    setSelectedLocations([]);
+    setSelectedRooms([]);
+  };
+
+  // --- Derived Filtering ---
+  const filteredProperties = useMemo(() => {
+    return properties.filter(prop => {
+      if (prop.rent < priceRange[0] || prop.rent > priceRange[1]) return false;
+      
+      if (selectedLocations.length > 0) {
+        const matchesLoc = selectedLocations.some(locStr => 
+          prop.address.toLowerCase().includes(locStr.split(',')[0].toLowerCase().trim()) ||
+          (prop.city && prop.city.toLowerCase() === locStr.split(',')[0].toLowerCase().trim())
+        );
+        if (!matchesLoc) return false;
+      }
+
+      if (selectedRooms.length > 0) {
+        if (!selectedRooms.includes(prop.bedrooms)) return false;
+      }
+
+      if (selectedTypes.length > 0) {
+        const pType = prop.title.toLowerCase().includes('house') ? 'Single Family House' : 
+                      prop.title.toLowerCase().includes('condo') ? 'Condominium' : 'Apartment';
+        if (!selectedTypes.includes(pType)) return false;
+      }
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'rent-low') return a.rent - b.rent;
+      if (sortBy === 'rent-high') return b.rent - a.rent;
+      return 0;
+    });
+  }, [properties, priceRange, selectedLocations, selectedRooms, selectedTypes, sortBy]);
+
+  const getImageUrl = (imageField) => {
+    if (typeof imageField === 'string' && imageField.startsWith('http')) return imageField;
+    if (Array.isArray(imageField)) return imageField.find(u => u.startsWith('http')) || null;
+    return null;
   };
 
   const handleSaveProperty = (propertyId) => {
     const property = properties.find(p => p.id === propertyId);
     if (!property) return;
-
     const existingSaved = JSON.parse(localStorage.getItem('rently_saved_properties') || '[]');
-    
     if (savedProperties.includes(propertyId)) {
       const updatedSaved = savedProperties.filter(id => id !== propertyId);
       setSavedProperties(updatedSaved);
-      const updatedLocalStorage = existingSaved.filter(p => p.id !== propertyId);
-      localStorage.setItem('rently_saved_properties', JSON.stringify(updatedLocalStorage));
+      localStorage.setItem('rently_saved_properties', JSON.stringify(existingSaved.filter(p => p.id !== propertyId)));
     } else {
       setSavedProperties([...savedProperties, propertyId]);
-      const propertyToSave = { ...property, savedAt: new Date().toISOString() };
-      existingSaved.push(propertyToSave);
+      existingSaved.push({ ...property, savedAt: new Date().toISOString() });
       localStorage.setItem('rently_saved_properties', JSON.stringify(existingSaved));
     }
   };
@@ -87,1101 +150,348 @@ const BrowseProperties = ({ onBack, userPreferences }) => {
   const handleContactLandlord = (property) => {
     setContactProperty(property);
     setShowContactModal(true);
-    setContactForm({
-      message: `Hi, I'm interested in your property at ${property.address}. I would like to schedule a viewing.`,
-      moveInDate: ''
-    });
+    setContactForm({ message: `Hi, I'm interested in ${property.title}.`, moveInDate: '' });
   };
 
-  const handleContactFormChange = (e) => {
-    const { name, value } = e.target;
-    setContactForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmitContact = async (e) => {
+  const handleSubmitContact = (e) => {
     e.preventDefault();
-    
-    const newConversation = {
-      id: Date.now(),
-      name: contactProperty.landlord,
-      avatar: '🏠',
-      lastMessage: contactForm.message.substring(0, 50) + '...',
-      timestamp: 'Just now',
-      unread: 0,
-      online: false,
-      propertyAddress: contactProperty.address,
-      propertyRent: contactProperty.rent
-    };
-
-    const newMessage = {
-      id: Date.now(),
-      text: contactForm.message,
-      sender: 'me',
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      moveInDate: contactForm.moveInDate || null
-    };
-
-    const existingConversations = JSON.parse(localStorage.getItem('rently_conversations') || '[]');
-    const existingMessages = JSON.parse(localStorage.getItem('rently_messages') || '{}');
-
-    existingConversations.unshift(newConversation);
-    existingMessages[newConversation.id] = [newMessage];
-
-    localStorage.setItem('rently_conversations', JSON.stringify(existingConversations));
-    localStorage.setItem('rently_messages', JSON.stringify(existingMessages));
-
-    alert(`✅ Message sent to ${contactProperty.landlord}!\n\nYour conversation has been added to your Messages inbox.`);
-    
+    alert(`✅ Message sent to landlord for ${contactProperty.address}!\nDate Requested: ${contactForm.moveInDate || 'Not specified'}`);
     setShowContactModal(false);
-    setContactProperty(null);
     setContactForm({ message: '', moveInDate: '' });
   };
 
-  const normalizeCity = (address = '') => {
-    if (!address) return 'Other';
-    const knownCities = ['saskatoon', 'toronto', 'calgary', 'edmonton', 'regina', 'winnipeg', 'vancouver', 'montreal'];
-    const tokens = String(address)
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean);
-
-    for (const t of tokens) {
-      const lower = t.toLowerCase();
-      const match = knownCities.find((c) => lower.includes(c));
-      if (match) return match.charAt(0).toUpperCase() + match.slice(1);
-    }
-
-    const cleaned = tokens.filter((t) => !/^(on|sk|ab|bc|mb|qc|ns|nb|nl|yt|nt|nu|canada|ontario)$/i.test(t));
-    if (cleaned.length > 0) return cleaned[cleaned.length - 1];
-    return 'Other';
-  };
-
-  const getImageUrl = (imageField, images = []) => {
-    const fromImages = Array.isArray(images)
-      ? images.find((u) => typeof u === 'string' && u.startsWith('http'))
-      : null;
-    if (fromImages) return fromImages;
-    if (Array.isArray(imageField)) {
-      const url = imageField.find((u) => typeof u === 'string' && u.startsWith('http'));
-      return url || imageField.find((u) => typeof u === 'string') || null;
-    }
-    return imageField || null;
-  };
-
-  const filteredProperties = properties
-    .filter(prop => {
-      if (filterBedrooms !== 'all' && prop.bedrooms !== parseInt(filterBedrooms)) return false;
-      if (prop.rent > filterMaxRent) return false;
-      if (filterLocation !== 'all') {
-        if (filterLocation === 'preferred') {
-          if (!prop.address.toLowerCase().includes(userCity.toLowerCase())) return false;
-        } else if (filterLocation === 'nearby') {
-          const distance = parseFloat(prop.distance);
-          if (distance > 2.0) return false;
-        }
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'rent-low': return a.rent - b.rent;
-        case 'rent-high': return b.rent - a.rent;
-        case 'size-large': return b.sqft - a.sqft;
-        case 'distance': return parseFloat(a.distance) - parseFloat(b.distance);
-        default: return 0;
-      }
-    });
-
   return (
-    <div className="browse-properties">
-      <div className="properties-header">
-        <button className="back-btn" onClick={onBack}>← Back to Dashboard</button>
-        <h1>🏠 Browse Properties</h1>
-        <p>Find your perfect rental home</p>
-      </div>
-
-      <div className="filters-section">
-        <div className="filter-group">
-          <label>📍 Location:</label>
-          <select value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)}>
-            <option value="all">All Locations</option>
-            <option value="preferred">My Preferred City ({userCity})</option>
-            <option value="nearby">Within 2km of Campus</option>
-          </select>
+    <div className="browse-layout">
+      
+      {/* --- SIDEBAR FILTER --- */}
+      <div className="sidebar-filter">
+        <div className="sidebar-header">
+           <h3>Filters</h3>
+           <button className="clear-btn" onClick={handleClearAll}>Clear All</button>
         </div>
 
-        <div className="filter-group">
-          <label>🛏️ Bedrooms:</label>
-          <select value={filterBedrooms} onChange={(e) => setFilterBedrooms(e.target.value)}>
-            <option value="all">All</option>
-            <option value="0">Studio</option>
-            <option value="1">1 Bedroom</option>
-            <option value="2">2 Bedrooms</option>
-            <option value="3">3+ Bedrooms</option>
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label>💰 Max Rent: ${filterMaxRent}</label>
-          <input
-            type="range"
-            min="800"
-            max="3000"
-            step="100"
-            value={filterMaxRent}
-            onChange={(e) => setFilterMaxRent(parseInt(e.target.value))}
-          />
-          <div className="budget-hint">
-            {userPreferences?.budget && (
-              <span>Your budget: ${userPreferences.budget}/month</span>
-            )}
+        {/* 1. PRICE */}
+        <div className="filter-section">
+          <div className="section-title"><div className="icon-wrap"><Icons.PriceIcon /></div> Price Range</div>
+          <div className="price-inputs">
+             <div className="dual-slider-container">
+                <div className="slider-track-bg"></div>
+                <div 
+                  className="slider-track-fill" 
+                  style={{ 
+                    left: `${(priceRange[0] / 10000) * 100}%`, 
+                    width: `${((priceRange[1] - priceRange[0]) / 10000) * 100}%` 
+                  }}
+                ></div>
+                <input 
+                  type="range" min="0" max="10000" step="100"
+                  value={priceRange[0]}
+                  onChange={e => { const val = Math.min(Number(e.target.value), priceRange[1] - 100); setPriceRange([val, priceRange[1]]); }}
+                  className="thumb thumb-left"
+                />
+                <input 
+                  type="range" min="0" max="10000" step="100"
+                  value={priceRange[1]}
+                  onChange={e => { const val = Math.max(Number(e.target.value), priceRange[0] + 100); setPriceRange([priceRange[0], val]); }}
+                  className="thumb thumb-right"
+                />
+             </div>
+             <div className="price-labels">
+               <span className="price-badge">${priceRange[0].toLocaleString()}</span>
+               <span className="price-badge">${priceRange[1].toLocaleString()}</span>
+             </div>
           </div>
         </div>
 
-        <div className="filter-group">
-          <label>📊 Sort By:</label>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="rent-low">Price: Low to High</option>
-            <option value="rent-high">Price: High to Low</option>
-            <option value="size-large">Size: Largest First</option>
-            <option value="distance">Distance to Campus</option>
-          </select>
-        </div>
-      </div>
-
-      {error && <div className="error-banner">⚠️ {error}</div>}
-
-      <div className="properties-stats">
-        <span>Showing {filteredProperties.length} properties</span>
-        <span>{savedProperties.length} saved</span>
-      </div>
-
-      {loading ? (
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Loading properties...</p>
-        </div>
-      ) : (
-        <div className="city-sections">
-          {Object.entries(
-            filteredProperties.reduce((acc, prop) => {
-              const city = normalizeCity(prop.address);
-              if (!acc[city]) acc[city] = [];
-              acc[city].push(prop);
-              return acc;
-            }, {})
-          )
-            .sort(([a], [b]) => {
-              const al = a.toLowerCase();
-              const bl = b.toLowerCase();
-              if (al === 'saskatoon' && bl !== 'saskatoon') return -1;
-              if (bl === 'saskatoon' && al !== 'saskatoon') return 1;
-              return a.localeCompare(b);
-            })
-            .map(([city, list]) => (
-              <section key={city} className="city-section">
-                <div className="city-header">
-                  {city.toLowerCase() === 'saskatoon' ? 'Popular homes in Saskatoon' : `Homes in ${city}`}
-                </div>
-                <div className="properties-grid">
-                  {list.map((property) => {
-                    const imageUrl = getImageUrl(property.image, property.images);
-                    const hasImage = typeof imageUrl === 'string' && imageUrl.startsWith('http');
-                    return (
-                      <div
-                        key={property.id}
-                        className="property-card"
-                        onClick={() => { handleCardClick(property); setSelectedProperty(property); }}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        <div
-                          className="property-image"
-                          style={{
-                            backgroundImage: hasImage
-                              ? `url(${imageUrl})`
-                              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center'
-                          }}
-                        >
-                          {!hasImage && (
-                            <span className="property-icon">??</span>
-                          )}
-
-                          <button
-                        className={`save-btn ${savedProperties.includes(property.id) ? 'saved' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); handleSaveProperty(property.id); }}
-                      >
-                            {savedProperties.includes(property.id) ? 'Saved' : '+'}
-                      </button>
-                          <span className="available-badge">{property.available || 'Now'}</span>
-                        </div>
-
-                        <div className="property-details">
-                          <div className="property-header">
-                            <h3>{property.title}</h3>
-                          </div>
-
-                          {property.available && (
-                            <div className="property-subline">{property.available}</div>
-                          )}
-                          <div className="property-address">{property.address}</div>
-                          <div className="property-price">${property.rent}/mo</div>
-                          {property.distance && <div className="property-distance">{property.distance}</div>}
-                          <div className="property-actions desktop-only">
-                            <button
-                              className="view-details-btn"
-                              onClick={(e) => { e.stopPropagation(); setSelectedProperty(property); }}
-                            >
-                              View Details
-                            </button>
-                            <button
-                              className="contact-btn"
-                              onClick={(e) => { e.stopPropagation(); handleContactLandlord(property); }}
-                            >
-                              Contact Landlord
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
+        {/* 2. TYPE */}
+        <div className="filter-section">
+          <div className="section-title"><div className="icon-wrap"><Icons.TypeIcon /></div> Property Type</div>
+          <div className="checkbox-group">
+            {['Single Family House', 'Apartment', 'Condominium'].map(type => (
+              <label key={type} className="custom-checkbox">
+                <input type="checkbox" checked={selectedTypes.includes(type)} onChange={() => handleTypeChange(type)} />
+                <span className="checkmark"></span> {type}
+              </label>
             ))}
+          </div>
         </div>
-      )}
+
+        {/* 3. LOCATION */}
+        <div className="filter-section">
+          <div className="section-title"><div className="icon-wrap"><Icons.LocationIcon /></div> Location</div>
+          <div className="checkbox-group">
+            {['Toronto, ON', 'Vancouver, BC', 'Saskatoon, SK', 'Ottawa, ON'].map(loc => (
+              <label key={loc} className="custom-checkbox">
+                <input type="checkbox" checked={selectedLocations.includes(loc.split(',')[0])} onChange={() => handleLocationChange(loc.split(',')[0])} />
+                <span className="checkmark"></span> {loc}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. ROOMS */}
+        <div className="filter-section">
+          <div className="section-title"><div className="icon-wrap"><Icons.RoomsIcon /></div> Bedrooms</div>
+          <div className="room-pills">
+             {[1, 2, 3, 4].map(num => (
+               <button key={num} className={`room-pill ${selectedRooms.includes(num) ? 'active' : ''}`} onClick={() => handleRoomToggle(num)}>
+                 {num}+
+               </button>
+             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* --- MAIN CONTENT --- */}
+      <div className="main-content-area">
+        <div className="top-header-clean">
+           <div className="header-content">
+             <button className="dash-back-btn" onClick={onBack}>← Dashboard</button>
+             <div className="hero-title">
+                <h1>Browse Properties</h1>
+             </div>
+             <p className="hero-subtitle">Explore available rentals in your area.</p>
+           </div>
+        </div>
+
+        <div className="results-bar">
+          <span className="count-text"><strong>{filteredProperties.length}</strong> homes available</span>
+          <div className="sort-box">
+             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="rent-low">Price: Low to High</option>
+                <option value="rent-high">Price: High to Low</option>
+             </select>
+          </div>
+        </div>
+
+        <div className="pro-grid">
+          {filteredProperties.map(property => {
+             const imageUrl = getImageUrl(property.image);
+             const isSaved = savedProperties.includes(property.id);
+             return (
+              <div key={property.id} className="ref-card" onClick={() => setSelectedProperty(property)}>
+                <div className="ref-img-box">
+                   {imageUrl ? <img src={imageUrl} alt={property.title} className="ref-img" /> : <div className="ref-placeholder"><Icons.Placeholder /></div>}
+                   <div className="ref-loc-badge"><Icons.Pin /> {property.city || 'Canada'}</div>
+                   <button className={`ref-save-btn ${isSaved ? 'saved' : ''}`} onClick={(e) => { e.stopPropagation(); handleSaveProperty(property.id); }}>{isSaved ? '♥' : '+'}</button>
+                </div>
+                <div className="ref-content">
+                  <div className="ref-header">
+                    <h3 className="ref-title">{property.title}</h3>
+                    <span className="ref-price">${property.rent.toLocaleString()}</span>
+                  </div>
+                  <div className="ref-divider"></div>
+                  <div className="ref-specs">
+                    <div className="ref-spec"><Icons.Bed /> {property.bedrooms} Bd</div>
+                    <div className="ref-spec"><Icons.Bath /> {property.bathrooms || 1} Ba</div>
+                    <div className="ref-spec"><Icons.Sqft /> {property.sqft || '--'} sqft</div>
+                  </div>
+                </div>
+              </div>
+             );
+          })}
+        </div>
+      </div>
+
+      {/* --- DETAILS MODAL --- */}
       {selectedProperty && (
         <div className="modal-overlay" onClick={() => setSelectedProperty(null)}>
-          <div className="modal-content property-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-modal" onClick={() => setSelectedProperty(null)}>✕</button>
-            
-            <div className="modal-header">
-              <div>
-                <h2>{selectedProperty.title}</h2>
-                <p className="modal-address">📍 {selectedProperty.address}</p>
-              </div>
-              <div className="modal-rent">${selectedProperty.rent}/month</div>
-            </div>
-
-            <div className="modal-body">
-              <div className="modal-section">
-                <h3>Property Details</h3>
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">Bedrooms:</span>
-                    <span className="detail-value">{selectedProperty.bedrooms === 0 ? 'Studio' : selectedProperty.bedrooms}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Bathrooms:</span>
-                    <span className="detail-value">{selectedProperty.bathrooms}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Square Feet:</span>
-                    <span className="detail-value">{selectedProperty.sqft} sqft</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Price/sqft:</span>
-                    <span className="detail-value">${(selectedProperty.rent / selectedProperty.sqft).toFixed(2)}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Available:</span>
-                    <span className="detail-value">{selectedProperty.available}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">Distance:</span>
-                    <span className="detail-value">{selectedProperty.distance}</span>
-                  </div>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+             <button className="close-x" onClick={() => setSelectedProperty(null)}>✕</button>
+             <div className="modal-inner-grid">
+                <div className="modal-left">
+                   <div className="modal-image-large">
+                      {getImageUrl(selectedProperty.image) ? <img src={getImageUrl(selectedProperty.image)} alt="" /> : <div className="modal-ph-large"><Icons.Placeholder /></div>}
+                   </div>
                 </div>
-              </div>
-
-              <div className="modal-section">
-                <h3>Description</h3>
-                <p>{selectedProperty.description}</p>
-              </div>
-
-              <div className="modal-section">
-                <h3>Features & Amenities</h3>
-                <div className="features-grid">
-                  <div className="feature-item">
-                    <span>Utilities:</span>
-                    <strong>{selectedProperty.utilities}</strong>
-                  </div>
-                  <div className="feature-item">
-                    <span>Parking:</span>
-                    <strong>{selectedProperty.parking ? 'Yes' : 'No'}</strong>
-                  </div>
-                  <div className="feature-item">
-                    <span>Laundry:</span>
-                    <strong>{selectedProperty.laundry}</strong>
-                  </div>
-                  <div className="feature-item">
-                    <span>Pet Friendly:</span>
-                    <strong>{selectedProperty.petFriendly ? 'Yes' : 'No'}</strong>
-                  </div>
-                  <div className="feature-item">
-                    <span>Furnished:</span>
-                    <strong>{selectedProperty.furnished ? 'Yes' : 'No'}</strong>
-                  </div>
-                  <div className="feature-item">
-                    <span>Landlord:</span>
-                    <strong>{selectedProperty.landlord}</strong>
-                  </div>
+                <div className="modal-right">
+                   <div className="modal-chip">Available</div>
+                   <h2>{selectedProperty.title}</h2>
+                   <p className="modal-addr">📍 {selectedProperty.address}</p>
+                   <h1 className="modal-price">${selectedProperty.rent.toLocaleString()}<span className="mo">/mo</span></h1>
+                   <div className="modal-info-row">
+                      <div className="info-block"><span className="label">Bedrooms</span><span className="val">{selectedProperty.bedrooms}</span></div>
+                      <div className="info-block"><span className="label">Bathrooms</span><span className="val">{selectedProperty.bathrooms || 1}</span></div>
+                      <div className="info-block"><span className="label">Sq Ft</span><span className="val">{selectedProperty.sqft || 'N/A'}</span></div>
+                   </div>
+                   <div className="modal-desc">
+                     <h4>About this home</h4>
+                     <p>{selectedProperty.description || "A lovely property featuring modern amenities and close proximity to local transit. Contact the landlord for more details or to arrange a viewing."}</p>
+                   </div>
+                   <div className="modal-buttons">
+                      <button className="btn-save" onClick={() => handleSaveProperty(selectedProperty.id)}>{savedProperties.includes(selectedProperty.id) ? 'Saved ♥' : 'Save'}</button>
+                      <button className="btn-contact" onClick={() => handleContactLandlord(selectedProperty)}>Contact Landlord</button>
+                   </div>
                 </div>
-              </div>
-
-              <div className="modal-section">
-                <h3>Additional Amenities</h3>
-                <div className="amenities-list">
-                  {selectedProperty.amenities.map((amenity, index) => (
-                    <span key={index} className="amenity-tag">✓ {amenity}</span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button
-                  className="save-property-btn"
-                  onClick={() => handleSaveProperty(selectedProperty.id)}
-                >
-                  {savedProperties.includes(selectedProperty.id) ? '❤️ Saved' : '🤍 Save Property'}
-                </button>
-                <button 
-                  className="contact-landlord-btn"
-                  onClick={() => {
-                    setSelectedProperty(null);
-                    handleContactLandlord(selectedProperty);
-                  }}
-                >
-                  📧 Contact Landlord
-                </button>
-                <button className="schedule-viewing-btn">📅 Schedule Viewing</button>
-              </div>
-            </div>
+             </div>
           </div>
         </div>
       )}
 
-      {showContactModal && contactProperty && (
-        <div className="modal-overlay" onClick={() => setShowContactModal(false)}>
-          <div className="modal-content contact-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-modal" onClick={() => setShowContactModal(false)}>✕</button>
-            
-            <div className="contact-modal-header">
-              <h2>📧 Contact Landlord</h2>
-              <div className="contact-property-info">
-                <h3>{contactProperty.title}</h3>
-                <p>📍 {contactProperty.address}</p>
-                <p>👤 Landlord: {contactProperty.landlord}</p>
+      {/* --- CONTACT MODAL --- */}
+      {showContactModal && (
+        <div className="modal-overlay contact-overlay" onClick={() => setShowContactModal(false)}>
+           <div className="contact-box" onClick={e => e.stopPropagation()}>
+              <div className="contact-header">
+                 <h3>Contact Landlord</h3>
+                 <button className="close-x-white" onClick={() => setShowContactModal(false)}>✕</button>
               </div>
-            </div>
-
-            <form onSubmit={handleSubmitContact} className="contact-form">
-              <div className="form-group">
-                <label>Preferred Move-In Date (Optional)</label>
-                <input
-                  type="date"
-                  name="moveInDate"
-                  value={contactForm.moveInDate}
-                  onChange={handleContactFormChange}
-                />
+              <div className="contact-body">
+                 <div className="mini-prop">
+                    <strong>{contactProperty?.title}</strong>
+                    <div style={{fontSize:'0.9rem', color:'#666'}}>{contactProperty?.address}</div>
+                 </div>
+                 
+                 <label className="form-label">Preferred Move-In Date</label>
+                 <input 
+                   type="date" 
+                   className="contact-input"
+                   value={contactForm.moveInDate}
+                   onChange={(e) => setContactForm({...contactForm, moveInDate: e.target.value})}
+                 />
+                 
+                 <label className="form-label">Message</label>
+                 <textarea rows="4" className="contact-input" value={contactForm.message} onChange={(e) => setContactForm({...contactForm, message: e.target.value})} />
+                 <button className="btn-send" onClick={handleSubmitContact}>Send Message</button>
               </div>
-
-              <div className="form-group">
-                <label>Your Message *</label>
-                <textarea
-                  name="message"
-                  value={contactForm.message}
-                  onChange={handleContactFormChange}
-                  placeholder="Tell the landlord about yourself and why you're interested..."
-                  rows="8"
-                  required
-                />
-                <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '8px', display: 'block' }}>
-                  💡 Your contact information will be automatically included with this message
-                </small>
-              </div>
-
-              <div className="form-actions">
-                <button type="button" className="cancel-btn" onClick={() => setShowContactModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  📧 Send Message
-                </button>
-              </div>
-            </form>
-          </div>
+           </div>
         </div>
       )}
 
       <style>{`
-        .browse-properties {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-
-        .properties-header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-
-        .back-btn {
-          display: inline-block;
-          margin-bottom: 20px;
-          padding: 10px 20px;
-          background: white;
-          border: 2px solid #fd5068;
-          color: #fd5068;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .back-btn:hover {
-          background: #fd5068;
-          color: white;
-        }
-
-        .properties-header h1 {
-          margin: 0 0 10px 0;
-          font-size: 2.5rem;
-          background: linear-gradient(45deg, #fd5068, #ff6b9d);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .properties-header p {
-          margin: 0;
-          color: #666;
-          font-size: 1.1rem;
-        }
-
-        .filters-section {
-          background: white;
-          padding: 25px;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          margin-bottom: 20px;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 20px;
-        }
-
-        .filter-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .filter-group label {
-          font-weight: 600;
-          color: #333;
-          font-size: 0.95rem;
-        }
-
-        .filter-group select,
-        .filter-group input[type="range"] {
-          padding: 10px;
-          border: 2px solid #ddd;
-          border-radius: 8px;
-          font-size: 1rem;
-          cursor: pointer;
-        }
-
-        .filter-group select:focus {
-          outline: none;
-          border-color: #fd5068;
-        }
-
-        .filter-group input[type="range"] {
-          padding: 0;
-        }
-
-        .budget-hint {
-          margin-top: 8px;
-          font-size: 0.85rem;
-          color: #fd5068;
-          font-weight: 600;
-        }
-
-        .error-banner {
-          background: #fff3cd;
-          border: 2px solid #ffc107;
-          color: #856404;
-          padding: 15px 20px;
-          border-radius: 8px;
-          margin-bottom: 20px;
-          text-align: center;
-          font-weight: 600;
-        }
-
-        .loading-state {
-          text-align: center;
-          padding: 80px 20px;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .spinner {
-          width: 50px;
-          height: 50px;
-          border: 4px solid #f0f0f0;
-          border-top: 4px solid #fd5068;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        .properties-stats {
-          display: flex;
-          justify-content: space-between;
-          padding: 15px 20px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          margin-bottom: 20px;
-          font-weight: 600;
-          color: #666;
-        }
-
-        .properties-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-          gap: 18px;
-          padding: 0 12px 18px;
-        }
-
-        .property-card {
-          background: #fff;
-          border-radius: 18px;
-          overflow: hidden;
-          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-          border: 1px solid rgba(0,0,0,0.05);
-          transition: transform 0.22s ease, box-shadow 0.22s ease;
-        }
-
-        .property-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-        }
-
-        .property-image {
-          position: relative;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 52px 16px;
-          text-align: center;
-          min-height: 170px;
-        }
-
-        .property-image::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.25) 100%);
-          pointer-events: none;
-        }
-
-        .property-icon {
-          font-size: 3.6rem;
-          position: relative;
-          z-index: 1;
-        }
-
-        .save-btn {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          background: rgba(255,255,255,0.95);
-          border: 1px solid rgba(0,0,0,0.08);
-          width: 38px;
-          height: 38px;
-          border-radius: 12px;
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: #111827;
-          cursor: pointer;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
-          z-index: 2;
-        }
-
-        .save-btn:hover {
-          transform: scale(1.1);
-        }
-
-        .save-btn.saved {
-          animation: heartbeat 0.3s ease;
-        }
-
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.15); }
-        }
-
-        .available-badge {
-          position: absolute;
-          top: 12px;
-          left: 12px;
-          background: rgba(0,0,0,0.7);
-          color: white;
-          padding: 6px 11px;
-          border-radius: 16px;
-          font-size: 0.82rem;
-          font-weight: 600;
-          z-index: 2;
-        }
-
-        .property-details {
-          padding: 16px;
-        }
-
-        .property-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 8px;
-          gap: 8px;
-        }
-
-        .property-header h3 {
-          margin: 0;
-          font-size: 1rem;
-          color: #111827;
-          flex: 1;
-          line-height: 1.3;
-        }
-
-        .property-address,
-        .property-distance {
-          margin: 2px 0;
-          color: #4b5563;
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .property-subline {
-          margin: 2px 0 4px 0;
-          color: #6b7280;
-          font-size: 0.85rem;
-        }
-
-        .property-price {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #111827;
-          margin: 0 0 6px 0;
-        }
-
-        .property-actions {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 12px;
-        }
-
-        .city-sections {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        .city-section {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-
-        .city-header {
-          font-size: 1.05rem;
-          font-weight: 700;
-          color: #111827;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .city-header::after {
-          content: '›';
-          font-size: 1rem;
-          color: #6b7280;
-        }
-
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 20px;
-        }
-
-        .property-modal {
-          background: white;
-          border-radius: 16px;
-          max-width: 800px;
-          width: 100%;
-          max-height: 90vh;
-          overflow-y: auto;
-          position: relative;
-        }
-
-        .close-modal {
-          position: absolute;
-          top: 15px;
-          right: 15px;
-          background: #f0f0f0;
-          border: none;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          font-size: 1.5rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          z-index: 10;
-        }
-
-        .close-modal:hover {
-          background: #fd5068;
-          color: white;
-        }
-
-        .modal-header {
-          padding: 30px;
-          background: linear-gradient(45deg, #fd5068, #ff6b9d);
-          color: white;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-
-        .modal-header h2 {
-          margin: 0 0 10px 0;
-          font-size: 1.8rem;
-        }
-
-        .modal-address {
-          margin: 0;
-          opacity: 0.9;
-        }
-
-        .modal-rent {
-          font-size: 2rem;
-          font-weight: 700;
-        }
-
-        .modal-body {
-          padding: 30px;
-        }
-
-        .modal-section {
-          margin-bottom: 30px;
-        }
-
-        .modal-section h3 {
-          margin: 0 0 15px 0;
-          font-size: 1.3rem;
-          color: #333;
-        }
-
-        .detail-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
-        }
-
-        .detail-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 12px;
-          background: #f8f9fa;
-          border-radius: 8px;
-        }
-
-        .detail-label {
-          color: #666;
-          font-weight: 500;
-        }
-
-        .detail-value {
-          font-weight: 600;
-          color: #333;
-        }
-
-        .features-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
-        }
-
-        .feature-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 12px;
-          background: #f8f9fa;
-          border-radius: 8px;
-        }
-
-        .feature-item span {
-          color: #666;
-        }
-
-        .feature-item strong {
-          color: #333;
-        }
-
-        .amenities-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-        }
-
-        .amenity-tag {
-          padding: 8px 15px;
-          background: #e6f7ff;
-          color: #1890ff;
-          border-radius: 20px;
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        .modal-actions {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 15px;
-          margin-top: 30px;
-        }
-
-        .save-property-btn,
-        .contact-landlord-btn,
-        .schedule-viewing-btn {
-          padding: 15px;
-          border: none;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .save-property-btn {
-          background: linear-gradient(45deg, #fd5068, #ff6b9d);
-          color: white;
-        }
-
-        .contact-landlord-btn {
-          background: #1890ff;
-          color: white;
-        }
-
-        .schedule-viewing-btn {
-          background: #51cf66;
-          color: white;
-        }
-
-        .save-property-btn:hover,
-        .contact-landlord-btn:hover,
-        .schedule-viewing-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .contact-modal {
-          max-width: 600px;
-        }
-
-        .contact-modal-header {
-          padding: 30px;
-          background: linear-gradient(45deg, #fd5068, #ff6b9d);
-          color: white;
-        }
-
-        .contact-modal-header h2 {
-          margin: 0 0 20px 0;
-          font-size: 1.8rem;
-        }
-
-        .contact-property-info {
-          background: rgba(255, 255, 255, 0.1);
-          padding: 15px;
-          border-radius: 8px;
-          margin-top: 15px;
-        }
-
-        .contact-property-info h3 {
-          margin: 0 0 8px 0;
-          font-size: 1.2rem;
-        }
-
-        .contact-property-info p {
-          margin: 5px 0;
-          opacity: 0.9;
-        }
-
-        .contact-form {
-          padding: 30px;
-        }
-
-        .form-group {
-          margin-bottom: 20px;
-        }
-
-        .form-group label {
-          display: block;
-          margin-bottom: 8px;
-          font-weight: 600;
-          color: #333;
-        }
-
-        .form-group input,
-        .form-group textarea {
-          width: 100%;
-          padding: 12px;
-          border: 2px solid #e0e0e0;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-family: inherit;
-          transition: border-color 0.3s;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-          outline: none;
-          border-color: #fd5068;
-        }
-
-        .form-group textarea {
-          resize: vertical;
-          min-height: 120px;
-        }
-
-        .form-actions {
-          display: flex;
-          gap: 15px;
-          justify-content: flex-end;
-          margin-top: 30px;
-        }
-
-        .cancel-btn,
-        .submit-btn {
-          padding: 12px 30px;
-          border: none;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s;
-        }
-
-        .cancel-btn {
-          background: #f0f0f0;
-          color: #666;
-        }
-
-        .cancel-btn:hover {
-          background: #e0e0e0;
-        }
-
-        .submit-btn {
-          background: linear-gradient(45deg, #fd5068, #ff6b9d);
-          color: white;
-        }
-
-        .submit-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(253, 80, 104, 0.3);
-        }
-
-        @media (max-width: 768px) {
-          .properties-grid {
-            display: flex;
-            overflow-x: auto;
-            gap: 12px;
-            padding: 0 10px 16px;
-            scroll-snap-type: x mandatory;
-          }
-
-          .property-card {
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            overflow: hidden;
-            background: #fff;
-            border: 1px solid rgba(0,0,0,0.04);
-            min-height: 230px;
-            display: flex;
-            flex-direction: column;
-            min-width: 240px;
-            max-width: 260px;
-            flex: 0 0 auto;
-            scroll-snap-align: start;
-          }
-
-          .property-image {
-            min-height: 120px;
-            max-height: 140px;
-            padding: 14px 10px;
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
-          }
-
-          .property-details {
-            padding: 10px 10px 12px;
-            flex: 1;
-          }
-
-          .property-header {
-            gap: 6px;
-            margin-bottom: 4px;
-          }
-          .property-header h3 { font-size: 0.9rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-          .property-rent { font-size: 0.9rem; }
-          .property-address { font-size: 0.78rem; line-height: 1.2; }
-          .property-distance { font-size: 0.75rem; line-height: 1.2; }
-          .available-badge { padding: 5px 9px; font-size: 0.72rem; border-radius: 16px; }
-          .save-btn { width: 32px; height: 32px; font-size: 1.05rem; }
-          .property-icon { font-size: 2.4rem; }
-          .property-actions { display: none; }
-          .desktop-only { display: none; }
-
-          .filters-section {
-            grid-template-columns: 1fr;
-            padding: 16px;
-            gap: 12px;
-          }
-
-          .detail-grid,
-          .features-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .modal-actions {
-            grid-template-columns: 1fr;
-          }
-
-          .form-actions {
-            flex-direction: column;
-          }
-
-          .cancel-btn,
-          .submit-btn {
-            width: 100%;
-          }
+        :root {
+          --primary: #0f172a;
+          --secondary: #64748b;
+          --accent: #fd5068;
+          --bg-light: #f8fafc;
+          --border-light: #e2e8f0;
+        }
+        .browse-layout { display: flex; background: var(--bg-light); min-height: 100vh; font-family: 'Inter', -apple-system, sans-serif; padding-top: 60px; color: var(--primary); }
+        
+        /* --- SIDEBAR --- */
+        .sidebar-filter { width: 300px; background: white; border-right: 1px solid var(--border-light); padding: 24px; display: flex; flex-direction: column; gap: 24px; height: calc(100vh - 60px); position: sticky; top: 60px; overflow-y: auto; flex-shrink: 0; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-header h3 { margin: 0; font-size: 1.125rem; font-weight: 700; }
+        .clear-btn { background: none; border: none; color: var(--secondary); font-weight: 600; cursor: pointer; font-size: 0.875rem; transition: color 0.2s; }
+        .clear-btn:hover { color: var(--primary); }
+        .filter-section { display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border-light); padding-bottom: 24px; }
+        .filter-section:last-child { border-bottom: none; }
+        .section-title { font-weight: 600; font-size: 0.9375rem; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .icon-wrap { color: var(--secondary); display: flex; }
+
+        /* CONTROLS */
+        .checkbox-group { display: flex; flex-direction: column; gap: 10px; }
+        .custom-checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--secondary); font-size: 0.9375rem; user-select: none; }
+        .custom-checkbox input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+        .checkmark { height: 18px; width: 18px; background-color: #fff; border: 2px solid var(--border-light); border-radius: 4px; position: relative; transition: all 0.2s; }
+        .custom-checkbox:hover input ~ .checkmark { border-color: var(--secondary); }
+        .custom-checkbox input:checked ~ .checkmark { background-color: var(--primary); border-color: var(--primary); }
+        .custom-checkbox input:checked ~ .checkmark:after { content: ""; position: absolute; display: block; left: 5px; top: 1px; width: 4px; height: 9px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+        
+        .room-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+        .room-pill { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-light); background: white; color: var(--secondary); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .room-pill:hover { border-color: var(--secondary); background: var(--bg-light); }
+        .room-pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* SLIDER */
+        .dual-slider-container { position: relative; width: 100%; height: 20px; margin: 15px 0; }
+        .slider-track-bg { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; height: 4px; background: var(--border-light); border-radius: 2px; }
+        .slider-track-fill { position: absolute; top: 50%; transform: translateY(-50%); height: 4px; background: var(--primary); z-index: 1; pointer-events: none; }
+        .thumb { position: absolute; top: 0; left: 0; width: 100%; height: 100%; -webkit-appearance: none; background: none; pointer-events: none; margin: 0; z-index: 2; }
+        .thumb::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; position: relative; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid var(--primary); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 3; transition: transform 0.1s; }
+        .thumb::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        .thumb::-moz-range-thumb { pointer-events: auto; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2px solid var(--primary); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 3; }
+        .price-labels { display: flex; justify-content: space-between; margin-top: 8px; }
+        .price-badge { font-size: 0.875rem; color: var(--primary); font-weight: 700; }
+
+        /* MAIN AREA */
+        .main-content-area { flex: 1; padding: 0; display: flex; flex-direction: column; overflow-y: auto; }
+        .top-header-clean { background: white; padding: 32px 40px; border-bottom: 1px solid var(--border-light); }
+        .header-content { max-width: 1200px; margin: 0 auto; }
+        .dash-back-btn { display: inline-flex; align-items: center; padding: 6px 12px; background: var(--bg-light); color: var(--secondary); border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.875rem; margin-bottom: 16px; transition: all 0.2s; }
+        .dash-back-btn:hover { background: var(--border-light); color: var(--primary); }
+        .hero-title h1 { font-size: 2rem; color: var(--primary); font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.02em; }
+        .hero-subtitle { color: var(--secondary); font-size: 1.125rem; margin: 0; }
+        
+        .results-bar { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .count-text { font-size: 0.9375rem; color: var(--secondary); }
+        .count-text strong { color: var(--primary); }
+        .sort-box select { padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 6px; color: var(--primary); font-size: 0.9375rem; cursor: pointer; background: white; }
+
+        /* PRO CARDS (POLISHED) */
+        .pro-grid { padding: 0 40px 40px 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .ref-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; }
+        .ref-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); border-color: #cbd5e1; }
+        .ref-img-box { height: 180px; position: relative; background: #f1f5f9; }
+        .ref-img { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* NEW PREMIUM PLACEHOLDER STYLE */
+        .ref-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        
+        .ref-loc-badge { position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.95); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); backdrop-filter: blur(4px); }
+        .ref-save-btn { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; background: white; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--secondary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .ref-save-btn:hover { transform: scale(1.05); color: var(--primary); }
+        .ref-save-btn.saved { color: var(--accent); }
+
+        .ref-content { padding: 16px; flex: 1; display: flex; flex-direction: column; }
+        .ref-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .ref-title { margin: 0; font-size: 1rem; font-weight: 700; max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary); line-height: 1.4; }
+        .ref-price { font-size: 1.125rem; font-weight: 800; color: var(--primary); }
+        .ref-divider { height: 1px; background: var(--border-light); margin-bottom: 12px; margin-top: auto; }
+        .ref-specs { display: flex; gap: 16px; color: var(--secondary); font-size: 0.875rem; font-weight: 500; }
+        .ref-spec { display: flex; align-items: center; gap: 6px; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .contact-overlay { z-index: 3000; } 
+        .modal-box { width: 900px; max-width: 90%; background: white; border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .close-x { position: absolute; top: 20px; right: 20px; z-index: 10; background: white; border: 1px solid var(--border-light); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--primary); transition: all 0.2s; }
+        .close-x:hover { background: var(--bg-light); }
+        .modal-inner-grid { display: grid; grid-template-columns: 55% 45%; }
+        .modal-left { background: #f1f5f9; height: 550px; position: relative; }
+        .modal-image-large { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f1f5f9; }
+        .modal-image-large img { width: 100%; height: 100%; object-fit: cover; }
+        .modal-ph-large { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .modal-right { padding: 40px; display: flex; flex-direction: column; height: 550px; overflow-y: auto; }
+        .modal-chip { display: inline-block; background: #dcfce7; color: #166534; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 16px; align-self: flex-start; letter-spacing: 0.05em; text-transform: uppercase; }
+        .modal-right h2 { margin: 0 0 8px 0; font-size: 1.75rem; color: var(--primary); font-weight: 800; letter-spacing: -0.02em; }
+        .modal-addr { color: var(--secondary); margin: 0 0 24px 0; font-size: 1rem; }
+        .modal-price { font-size: 2.25rem; color: var(--primary); margin: 0 0 32px 0; font-weight: 800; }
+        .mo { font-size: 1.125rem; color: var(--secondary); font-weight: 500; }
+        .modal-info-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 32px; }
+        .info-block { background: var(--bg-light); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--border-light); }
+        .info-block .label { display: block; font-size: 0.75rem; color: var(--secondary); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.05em; }
+        .info-block .val { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .modal-desc h4 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; color: var(--primary); }
+        .modal-desc p { color: var(--secondary); line-height: 1.6; }
+        .modal-buttons { margin-top: auto; display: flex; gap: 16px; padding-top: 24px; }
+        .btn-save { flex: 1; padding: 14px; border: 1px solid var(--border-light); background: white; border-radius: 8px; font-weight: 600; cursor: pointer; color: var(--primary); transition: all 0.2s; }
+        .btn-save:hover { background: var(--bg-light); border-color: #cbd5e1; }
+        .btn-contact { flex: 1; padding: 14px; border: none; background: var(--primary); color: white; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-contact:hover { background: #1e293b; }
+
+        /* CONTACT MODAL */
+        .contact-box { width: 480px; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .contact-header { background: var(--primary); padding: 24px; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .contact-header h3 { margin: 0; font-weight: 700; font-size: 1.25rem; }
+        .close-x-white { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; opacity: 0.8; transition: opacity 0.2s; }
+        .close-x-white:hover { opacity: 1; }
+        .contact-body { padding: 32px; }
+        .mini-prop { background: var(--bg-light); padding: 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid var(--border-light); display: flex; flex-direction: column; gap: 4px; }
+        .mini-prop strong { color: var(--primary); }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 600; color: var(--primary); margin-bottom: 8px; }
+        .contact-input { width: 100%; padding: 12px 16px; border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 24px; font-family: inherit; color: var(--primary); background: white; transition: border-color 0.2s; }
+        .contact-input:focus { outline: none; border-color: var(--secondary); }
+        .btn-send { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+        .btn-send:hover { background: #e11d48; }
+
+        @media (max-width: 1024px) {
+           .browse-layout { flex-direction: column; }
+           .sidebar-filter { width: 100%; height: auto; position: relative; top: 0; padding: 24px; border-right: none; border-bottom: 1px solid var(--border-light); }
+           .modal-inner-grid { grid-template-columns: 1fr; }
+           .modal-left { height: 250px; }
+           .modal-right { height: auto; max-height: 60vh; }
+           .pro-grid, .results-bar, .header-content { padding-left: 24px; padding-right: 24px; }
         }
       `}</style>
     </div>
