@@ -345,7 +345,18 @@ const Dashboard = ({ userProfile, userPreferences, onNavigate, onLogout, onToggl
             <div className="msg-list">
               {realMessages.length > 0 ? realMessages.map((m) => (
                 <div key={m.id} className="msg-row" onClick={() => handleConnect(matches.find(match => (match.id || match) === m.id))}>
-                  <div className="msg-avatar">{m.avatar}</div>
+                  <div className="msg-avatar">
+                    {/* FIX: Check if avatar is an image URL/Data or just an emoji */}
+                    {(m.avatar && (m.avatar.startsWith('http') || m.avatar.startsWith('data:'))) ? (
+                      <img 
+                        src={m.avatar} 
+                        alt={m.name} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+                      />
+                    ) : (
+                      m.avatar
+                    )}
+                  </div>
                   <div className="msg-content"><div className="msg-name">{m.name}</div><div className="msg-text">{m.text}</div></div>
                   <div className="msg-time">{m.time}</div>
                 </div>
