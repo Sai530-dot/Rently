@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import PropertyMap from './PropertyMap'; 
-import realListings from '../data/real_listings.json';
-import craigslistData from '../data/craigslist_listings.json';
-import kijijiData from '../data/kijiji_listings.json';
-
-const ALL_LISTINGS = [...craigslistData, ...kijijiData, ...realListings];
+import { api } from '../services/api';
 
 // --- NEW PREMIUM PLACEHOLDER ---
 const PropertyPlaceholder = () => (
@@ -52,8 +48,13 @@ const CanadaRentMap = ({ onBack }) => {
   const cardRefs = useRef({}); 
 
   useEffect(() => {
-    const normalized = ALL_LISTINGS.map(normalizeListing);
-    setListings(normalized);
+    let mounted = true;
+    api.getProperties().then(({ properties }) => {
+      if (mounted) setListings((properties || []).map(normalizeListing));
+    }).catch(() => {
+      if (mounted) setListings([]);
+    });
+    return () => { mounted = false; };
   }, []);
 
   const filteredData = useMemo(() => {

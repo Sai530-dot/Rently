@@ -1,5 +1,6 @@
 # ml_utils.py
 import math
+import hashlib
 
 
 def _normalize_budget(amount, cap=5000.0):
@@ -48,7 +49,7 @@ def _encode_profile(profile, is_user=False, interest_buckets=8):
     interest_vec = [0.0] * interest_buckets
     interests = profile.get('interests', []) or []
     for tag in interests:
-        idx = abs(hash(str(tag).lower())) % interest_buckets
+        idx = int.from_bytes(hashlib.sha256(str(tag).strip().lower().encode()).digest()[:4], 'big') % interest_buckets
         interest_vec[idx] += 1.0
     # Normalize counts to [0,1] if any interests exist.
     total_interest = sum(interest_vec)

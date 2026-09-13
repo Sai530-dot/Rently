@@ -1,125 +1,54 @@
-﻿import React from 'react';
+import React, { useState } from 'react';
 import { api } from '../services/api';
 
-const SettingsPage = ({ userProfile, onBack, onSavePrefs }) => {
-  const effectiveUserId = userProfile?.id || userProfile?.email || 'anon';
-  const saved = (() => {
-    try { return JSON.parse(localStorage.getItem(`rently_profile_form_${effectiveUserId}`) || 'null'); } catch { return null; }
-  })();
-
-  const [form, setForm] = React.useState({
-    avatar: saved?.avatar || '',
-    bio: saved?.bio || '',
-    budget: saved?.budget || '',
-    city: saved?.city || '',
-    cleanliness: saved?.cleanliness || 'moderate',
-    sleepSchedule: saved?.sleepSchedule || 'flexible',
-  });
-
-  const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
-
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm(prev => ({ ...prev, avatar: reader.result }));
-    reader.readAsDataURL(file);
-  };
-
-  const handleSave = async () => {
-    localStorage.setItem(`rently_profile_form_${effectiveUserId}`, JSON.stringify(form));
-    const prefsKey = `rently_user_preferences_${effectiveUserId}`;
-    const existingPrefs = (() => { try { return JSON.parse(localStorage.getItem(prefsKey) || 'null'); } catch { return null; } })();
-    const updatedPrefs = {
-      ...(existingPrefs || {}),
-      budget: form.budget || existingPrefs?.budget,
-      cleanliness: form.cleanliness || existingPrefs?.cleanliness,
-      sleepSchedule: form.sleepSchedule || existingPrefs?.sleepSchedule,
-      location: form.city || existingPrefs?.location,
-    };
-    localStorage.setItem(prefsKey, JSON.stringify(updatedPrefs));
-    if (onSavePrefs) {
-      onSavePrefs(updatedPrefs);
-    }
+export default function SettingsPage({ userProfile, onBack, onSave }) {
+  const student = userProfile.user_type === 'student';
+  const prefs = userProfile.preferences;
+  const [form, setForm] = useState({ ...prefs, firstName: userProfile.firstName, interests: prefs.interests.join(', ') });
+  const [passwords, setPasswords] = useState({ currentPassword: '', password: '', confirm: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const change = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const save = async e => {
+    e.preventDefault(); setBusy(true); setError(''); setNotice('');
     try {
-      await api.savePreferences({
-        user_id: effectiveUserId,
-        budget: form.budget,
-        cleanliness: form.cleanliness,
-        sleepSchedule: form.sleepSchedule,
-        city: form.city,
-        avatar: form.avatar,
-      });
-    } catch (e) {
-      // ignore for now
-    }
-    onBack();
+      const { user } = await api.savePreferences({ ...form, budget: Number(form.budget), numRoommates: Number(form.numRoommates), interests: form.interests.split(',').map(v => v.trim()).filter(Boolean), completed: true });
+      onSave(user); setNotice('Your profile has been saved.');
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
-
-  return (
-    <div className="settings-page">
-      <div className="settings-header-row">
-        <button className="back-btn" onClick={onBack}>&larr; Back</button>
-        <h2>Edit profile</h2>
-      </div>
-
-      <div className="settings-card">
-        <div className="row">
-          <div className="avatar-large">
-            {form.avatar ? <img src={form.avatar} alt="avatar" /> : <span className="emoji-avatar">👤</span>}
-          </div>
-          <div className="avatar-actions">
-            <label className="upload-btn">
-              Change photo
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} hidden />
-            </label>
-          </div>
-        </div>
-
-        <label>Bio</label>
-        <textarea value={form.bio} onChange={(e) => handleChange('bio', e.target.value)} placeholder="Tell others about you" maxLength={200} />
-
-        <label>Budget</label>
-        <input type="number" value={form.budget} onChange={(e) => handleChange('budget', e.target.value)} placeholder="1500" />
-
-        <label>Preferred city/address</label>
-        <input type="text" value={form.city} onChange={(e) => handleChange('city', e.target.value)} placeholder="1342 College Drive, Saskatoon" />
-
-        <label>Cleanliness</label>
-        <select value={form.cleanliness} onChange={(e) => handleChange('cleanliness', e.target.value)}>
-          <option value="messy">Messy</option>
-          <option value="moderate">Moderate</option>
-          <option value="clean">Clean</option>
-          <option value="very_clean">Very clean</option>
-        </select>
-
-        <label>Sleep schedule</label>
-        <select value={form.sleepSchedule} onChange={(e) => handleChange('sleepSchedule', e.target.value)}>
-          <option value="early_bird">Early Bird</option>
-          <option value="night_owl">Night Owl</option>
-          <option value="flexible">Flexible</option>
-        </select>
-
-        <button className="primary-btn" onClick={handleSave}>Save changes</button>
-      </div>
-
-      <style>{`
-        .settings-page { max-width: 720px; margin: 0 auto; padding: 24px; font-family: 'Inter', sans-serif; }
-        .settings-header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-        .back-btn { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; }
-        .settings-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border: 1px solid #f1f1f1; display: flex; flex-direction: column; gap: 12px; }
-        .row { display: flex; align-items: center; gap: 16px; }
-        .avatar-large { width: 80px; height: 80px; border-radius: 18px; overflow: hidden; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
-        .avatar-large img { width: 100%; height: 100%; object-fit: cover; }
-        .avatar-actions { display: flex; flex-direction: column; gap: 8px; }
-        .upload-btn { background: linear-gradient(90deg, #fd5068, #ff6b9d); color: white; border: none; border-radius: 10px; padding: 10px 14px; cursor: pointer; font-weight: 600; width: fit-content; }
-        label { font-weight: 600; font-size: 0.9rem; color: #111827; }
-        input, select, textarea { width: 100%; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; font-size: 0.95rem; }
-        textarea { min-height: 100px; resize: vertical; }
-        .primary-btn { background: #111827; color: white; border: none; padding: 12px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 8px; }
-      `}</style>
-    </div>
-  );
-};
-
-export default SettingsPage;
+  const changePassword = async e => {
+    e.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      if (passwords.password !== passwords.confirm) throw new Error('Passwords do not match.');
+      const data = await api.changePassword(passwords); setNotice(data.message);
+      setPasswords({ currentPassword: '', password: '', confirm: '' });
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+  return <main className="workspace">
+    <header className="page-heading"><div><p className="eyebrow">YOUR ACCOUNT</p><h1>{prefs.completed ? 'Profile & settings' : 'Complete your profile'}</h1><p>{student ? 'Help potential roommates get to know you.' : 'Manage your public profile and account.'}</p></div><button onClick={onBack}>Dashboard</button></header>
+    {error && <p className="notice error" role="alert">{error}</p>}
+    {notice && <p className="notice" role="status">{notice}</p>}
+    <form className="panel form-grid" onSubmit={save}>
+      <label>Display name<input name="firstName" value={form.firstName} maxLength={150} onChange={change} required /></label>
+      <label>Email<input value={userProfile.email} readOnly /></label>
+      <label className="wide">Profile photo URL (optional)<input name="avatar" type="url" value={form.avatar} maxLength={2000} onChange={change} placeholder="https://…" /></label>
+      <label className="wide">About you<textarea name="bio" value={form.bio} maxLength={500} onChange={change} rows={3} /></label>
+      {student && <>
+        <label>Monthly budget (CAD)<input name="budget" type="number" min="1" max="100000" step="0.01" value={form.budget || ''} onChange={change} required /></label>
+        <label>Preferred city<input name="city" maxLength={100} value={form.city} onChange={change} placeholder="Saskatoon" required /></label>
+        <label>Cleanliness<select name="cleanliness" value={form.cleanliness} onChange={change}><option value="messy">Relaxed</option><option value="moderate">Moderate</option><option value="clean">Clean</option><option value="very_clean">Very clean</option></select></label>
+        <label>Sleep schedule<select name="sleepSchedule" value={form.sleepSchedule} onChange={change}><option value="early_bird">Early bird</option><option value="flexible">Flexible</option><option value="night_owl">Night owl</option></select></label>
+        <label>Number of roommates<input name="numRoommates" type="number" min="1" max="10" value={form.numRoommates} onChange={change} required /></label>
+        <label>Major (optional)<input name="major" maxLength={100} value={form.major} onChange={change} /></label>
+        <label className="wide">Interests, separated by commas<input name="interests" value={form.interests} onChange={change} placeholder="Cooking, hiking, music" /></label>
+      </>}
+      <div className="wide"><button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button></div>
+    </form>
+    <form className="panel form-grid" onSubmit={changePassword}>
+      <h2 className="wide">Change password</h2>
+      {['currentPassword', 'password', 'confirm'].map((name, index) => <label key={name}>{['Current password', 'New password', 'Confirm new password'][index]}<input type="password" autoComplete={index ? 'new-password' : 'current-password'} minLength={index ? 8 : undefined} maxLength={128} value={passwords[name]} onChange={e => setPasswords({ ...passwords, [name]: e.target.value })} required /></label>)}
+      <div className="wide"><button disabled={busy}>Update password</button></div>
+    </form>
+  </main>;
+}

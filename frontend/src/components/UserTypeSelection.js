@@ -17,9 +17,7 @@ const UserTypeSelection = ({ onUserTypeSelect, onShowSignup, onBack, mode }) => 
   return (
     <div className="user-selection">
       <div className="welcome-text">
-        <h2>
-          {mode === 'login' ? 'ARE YOU A .....' : 'CREATE ACCOUNT'}
-        </h2>
+        <h2>{mode === 'login' ? 'Choose your account' : 'Create an account'}</h2>
         <p>
           {mode === 'login' 
             ? 'Choose your account type to continue' 
@@ -85,9 +83,9 @@ const UserTypeSelection = ({ onUserTypeSelect, onShowSignup, onBack, mode }) => 
       {mode === 'login' && (
         <div className="signup-link">
           Don't have an account?{' '}
-          <a href="#" onClick={handleSignupClick}>
+          <button type="button" className="text-button" onClick={handleSignupClick}>
             Sign up here
-          </a>
+          </button>
         </div>
       )}
     </div>

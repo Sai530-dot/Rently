@@ -21,6 +21,7 @@ const navItems = [
   { key: 'browse-properties', label: 'Properties', icon: 'M4 5h16v14H4z M4 9h16' },
   { key: 'roommate-matching', label: 'Roommates', icon: 'M8 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm8 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6ZM3 19.5c0-2.2 2.7-3.5 5-3.5s5 1.3 5 3.5M11 19.5c0-2.2 2.7-3.5 5-3.5s5 1.3 5 3.5' },
   { key: 'rent-map', label: 'Rent Map', icon: 'M6 3l5 2 7-2v16l-7 2-5-2V3Zm5 2v16' },
+  { key: 'my-properties', label: 'My properties', icon: 'M3 10l9-7 9 7M5 9v12h14V9M9 21v-8h6v8' },
   { key: 'offer-evaluator', label: 'Evaluate', icon: 'M6 4h12M9 8h6M8 12h8M10 16h4' },
   { key: 'messages', label: 'Messages', icon: 'M4 6h16v10H7l-3 3z' },
   { key: 'saved-properties', label: 'Saved', icon: 'M12 20l-7-7a4 4 0 0 1 5.7-5.6L12 8.7l1.3-1.3A4 4 0 0 1 19 13z' },
@@ -34,15 +35,6 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
   const lastScroll = useRef(0);
   
   const isLoggedIn = userProfile !== null;
-  const isDashboardView = currentView === 'dashboard' || 
-                          currentView === 'roommate-matching' || 
-                          currentView === 'rent-map' || 
-                          currentView === 'offer-evaluator' || 
-                          currentView === 'messages' || 
-                          currentView === 'saved-properties' ||
-                          currentView === 'browse-properties' ||
-                          currentView === 'settings';
-
   const effectiveUserId = userProfile?.id || userProfile?.email || 'anon';
   const storedAvatar = (() => {
     try {
@@ -80,7 +72,7 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const mobileNavKeys = ['dashboard', 'browse-properties', 'roommate-matching', 'messages'];
+  const mobileNavKeys = ['dashboard', 'browse-properties', userProfile?.user_type === 'landlord' ? 'my-properties' : 'roommate-matching', 'messages'];
   const mobileNavItems = navItems.filter(item => mobileNavKeys.includes(item.key));
 
   // Hide when logged out; show on all views for logged-in users
@@ -92,7 +84,7 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
       {/* DESKTOP NAV GROUP - Hidden completely on mobile */}
       <div className="desktop-nav-group">
         <div className="nav-rail">
-          {navItems.map(item => {
+          {navItems.filter(item => item.key !== 'my-properties' || userProfile?.user_type === 'landlord').filter(item => item.key !== 'roommate-matching' || userProfile?.user_type === 'student').map(item => {
             if (item.key === 'theme-toggle') {
               return (
                 <button
@@ -154,7 +146,7 @@ const Navigation = ({ userProfile, currentView, onNavigate, onLogout, onToggleAp
              <div className="profile-menu light mobile-menu-popup">
                 <div className="menu-header-info">
                   <div className="menu-name">{firstName}</div>
-                  <div className="menu-role">Student</div>
+                  <div className="menu-role">{userProfile?.user_type === 'landlord' ? 'Landlord' : 'Student'}</div>
                 </div>
                 <div className="menu-divider" />
                 <div className="menu-item" onClick={() => { onNavigate('settings'); setShowProfileMenu(false); }}>Settings</div>

@@ -1,1 +1,7 @@
--r ../backend/src/requirements.txt
+Django>=5.2,<5.3
+django-cors-headers>=4.7,<5
+dj-database-url>=2.3,<4
+psycopg[binary]>=3.2,<4
+whitenoise>=6.7,<7
+requests>=2.32,<3
+beautifulsoup4>=4.12,<5

@@ -19,9 +19,33 @@ except Exception:
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'your-secret-key-for-now-12345'
-DEBUG = True
-ALLOWED_HOSTS = ['.vercel.app', 'now.sh', '127.0.0.1', 'localhost']
+
+def _load_environment_file(path):
+    """Load local Django settings without overriding real process environment values."""
+    try:
+        lines = path.read_text(encoding='utf-8').splitlines()
+    except OSError:
+        return
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        name, value = line.split('=', 1)
+        name = name.removeprefix('export ').strip()
+        if name:
+            os.environ.setdefault(name, value.strip().strip('"').strip("'"))
+
+
+# Local server credentials belong in backend/.env. Frontend .env files are not
+# loaded here so browser-only REACT_APP_* variables cannot become server secrets.
+_load_environment_file(BASE_DIR.parent / '.env')
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() == 'true'
+LOCAL_SECRET_KEY = 'local-development-only-reelty-key-change-this-before-production-2026'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', LOCAL_SECRET_KEY)
+if not DEBUG and SECRET_KEY == LOCAL_SECRET_KEY:
+    raise RuntimeError('Set DJANGO_SECRET_KEY before running in production.')
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.auth',
@@ -36,8 +60,10 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
@@ -105,7 +131,22 @@ if db_url:
 AUTH_USER_MODEL = 'users.CustomUser'
 
 # CORS settings for frontend
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001',
+).split(',')
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+CSRF_FAILURE_VIEW = 'users.api.csrf_failure'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
 CORS_ALLOW_CREDENTIALS = True
 
 LANGUAGE_CODE = 'en-us'
@@ -116,3 +157,30 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles_build" / "static"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'reelty@localhost')
+PASSWORD_RESET_TIMEOUT = 3600
+
+# Location Insights uses server-only provider credentials. Never expose these as
+# REACT_APP_* variables, which are embedded in the browser build.
+GEOAPIFY_API_KEY = os.environ.get('GEOAPIFY_API_KEY', '')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+# Gemini 2.5 Flash-Lite is unavailable to newly created Gemini API accounts.
+GEMINI_MODEL = 'gemini-3.5-flash-lite'
+LOCATION_INSIGHTS_CACHE_SECONDS = int(os.environ.get('LOCATION_INSIGHTS_CACHE_SECONDS', '3600'))
+LOCATION_INSIGHTS_HTTP_TIMEOUT_SECONDS = int(os.environ.get('LOCATION_INSIGHTS_HTTP_TIMEOUT_SECONDS', '10'))
+LOCATION_INSIGHTS_MAX_AMENITIES = int(os.environ.get('LOCATION_INSIGHTS_MAX_AMENITIES', '3'))

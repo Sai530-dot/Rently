@@ -1,35 +1,11 @@
-import base64
 import json
-import os
-import requests
+import logging
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import login
-from .models import CustomUser, RoommateProfile
-import firebase_admin
-from firebase_admin import credentials, auth
-from .matching import calculate_similarity
 
+from .location_insights import generate_offer_analysis
 
-# Random mock candidates to check if matching logic works
-# this is just a sample I REPEEATT THIS IS JUST A SAMPLE
-MOCK_CANDIDATES = [
-    {
-        "id": 101, "name": "Sarah Johnson", "major": "CS", 
-        "rent_ask": 1100, "cleanliness": "very_clean", "sleep_schedule": "night_owl",
-        "interests": ["coding", "gaming", "movies"], "image": ""
-    },
-    {
-        "id": 102, "name": "Mike Chen", "major": "Business", 
-        "rent_ask": 900, "cleanliness": "moderate", "sleep_schedule": "early_bird",
-        "interests": ["gym", "cooking", "hiking"], "image": ""
-    },
-    {
-        "id": 103, "name": "Emma Davis", "major": "Psychology", 
-        "rent_ask": 1250, "cleanliness": "clean", "sleep_schedule": "flexible",
-        "interests": ["reading", "yoga", "coffee"], "image": ""
-    }
-]
+logger = logging.getLogger(__name__)
 
 CITY_RENT_DATA = {
     "toronto": 2450,
@@ -48,189 +24,11 @@ CITY_RENT_DATA = {
     "victoria": 2100
 }
 
-def _load_firebase_credentials():
-    """
-    Try to load Firebase credentials from a few sources:
-    1) FIREBASE_SERVICE_KEY env var (raw JSON or base64-encoded JSON)
-    2) firebase-service-key.json file shipped with the code (for local dev)
-    """
-    # 1) Env var as JSON or base64(JSON)
-    raw_env = os.getenv('FIREBASE_SERVICE_KEY')
-    if raw_env:
-        try:
-            return credentials.Certificate(json.loads(raw_env))
-        except json.JSONDecodeError:
-            try:
-                decoded = base64.b64decode(raw_env).decode('utf-8')
-                return credentials.Certificate(json.loads(decoded))
-            except Exception:
-                pass  # fall through to file-based loading
-
-    # 2) Local file (dev)
-    cred_path = os.path.join(os.path.dirname(__file__), '..', 'firebase-service-key.json')
-    if os.path.exists(cred_path):
-        return credentials.Certificate(cred_path)
-
-    return None
-
-
-def init_firebase():
-    """Initialize firebase_admin once, or return the already initialized app."""
-    try:
-        return firebase_admin.get_app()
-    except ValueError:
-        cred = _load_firebase_credentials()
-        if not cred:
-            print("Firebase credentials not provided; signup endpoints will fail until configured.")
-            return None
-        return firebase_admin.initialize_app(cred)
-
-
-# Initialize at import time so serverless cold starts are handled
-firebase_app = init_firebase()
-
-
-# views.py (Updated student_signup)
-
-@csrf_exempt
-def student_signup(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            email = data['email']
-            password = data['password']
-            name = data.get('name', '')
-            university = data.get('university', '')
-
-            app = firebase_app or init_firebase()
-            if not app:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Firebase is not configured on the server. Please add FIREBASE_SERVICE_KEY env var or firebase-service-key.json.'
-                }, status=500)
-
-            # DEBUG PRINT
-            print(f"Attempting signup for: {email}")
-
-            # 1. Validate student email (Ensure you are using a valid domain during test!)
-            if not is_student_email(email):
-                print(f"Invalid domain: {email}")
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Please use a valid student email address (.edu, .ca, etc.)'
-                })
-
-            # 2. Create user in Firebase
-            try:
-                firebase_user = auth.create_user(
-                    email=email,
-                    password=password,
-                    display_name=name,
-                    email_verified=False
-                )
-                print(f"Firebase user created: {firebase_user.uid}")
-            
-            except auth.EmailAlreadyExistsError:
-                print("Firebase Error: Email exists")
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'An account with this email already exists'
-                })
-            except Exception as fb_error:
-                print(f"Firebase Critical Error: {fb_error}")
-                # This helps see if it's a credential/permission issue
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Firebase error: {str(fb_error)}'
-                })
-
-            # 3. Create user in Django
-            try:
-                user = CustomUser.objects.create_user(
-                    username=email,
-                    email=email,
-                    password=password,
-                    user_type='student',
-                    first_name=name,
-                    university=university
-                )
-                print(f"Django user created: {user.id}")
-            except Exception as db_error:
-                # If Django fails, we should ideally delete the Firebase user to keep sync,
-                # but for now let's just report the error.
-                print(f"Django DB Error: {db_error}")
-                return JsonResponse({'status': 'error', 'message': f"Database error: {str(db_error)}"})
-
-            return JsonResponse({
-                'status': 'success',
-                'user_id': user.id,
-                'firebase_uid': firebase_user.uid,
-                'message': 'Student account created!'
-            })
-
-        except Exception as e:   
-            print(f"General Error: {e}")
-            return JsonResponse({'status': 'error', 'message': str(e)})
-
-
-@csrf_exempt
-def landlord_signup(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            email = data['email']
-            password = data['password']
-            name = data.get('name', '')
-            phone = data.get('phone', '')
-
-            app = firebase_app or init_firebase()
-            if not app:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Firebase is not configured on the server. Please add FIREBASE_SERVICE_KEY env var or firebase-service-key.json.'
-                }, status=500)
-
-            # 1. Create user in Firebase
-            try:
-                firebase_user = auth.create_user(
-                    email=email,
-                    password=password,
-                    display_name=name,
-                    phone_number=phone
-                )
-                print(f"Firebase landlord created: {firebase_user.uid}")
-            except auth.EmailAlreadyExistsError:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'An account with this email already exists'
-                })
-
-            # 2. Create user in Django
-            user = CustomUser.objects.create_user(
-                username=email,
-                email=email,
-                password=password,
-                user_type='landlord',
-                first_name=name,
-                phone=phone
-            )
-            print(f"Django landlord created: {user.id}")
-
-            return JsonResponse({
-                'status': 'success',
-                'user_id': user.id,
-                'firebase_uid': firebase_user.uid,
-                'message': 'Landlord account created successfully!'
-            })
-
-        except Exception as e:
-            print(f"Landlord signup error: {e}")
-            return JsonResponse({'status': 'error', 'message': str(e)})
-
-
 @csrf_exempt
 def university_list(request):
     """Get hardcoded list of Canadian universities"""
+    if request.method != 'GET':
+        return JsonResponse({'message': 'Method not allowed'}, status=405)
     universities = [
         {"name": "University of Saskatchewan", "country": "Canada", "domain": "usask.ca"},
         {"name": "University of Toronto", "country": "Canada", "domain": "utoronto.ca"},
@@ -264,19 +62,6 @@ def university_list(request):
         'universities': universities,
         'count': len(universities)
     })
-
-def is_student_email(email):
-    """Check if email is from educational institution (including Canadian)"""
-    student_domains = [
-        # Canadian domains
-        '.ca', '.qc.ca',
-        # US domains
-        '.edu',
-        # Other common educational domains
-        '.ac.uk', '.edu.au', '.ac.nz'
-    ]
-    return any(domain in email.lower() for domain in student_domains)
-
 
 @csrf_exempt
 def evaluate_offer(request):
@@ -344,27 +129,91 @@ def evaluate_offer(request):
             elif final_score < 40:
                 label, color = "Poor Deal", "#ff6b6b"
 
-            return JsonResponse({
-                'success': True,
-                'evaluation': {
-                    'score': final_score,
-                    'label': label,
-                    'color': color,
-                    'totalMonthlyCost': rent_offer,
-                    'marketComparison': {
-                        'marketAverage': int(market_value),
-                        'percentDifference': round(abs(diff_percentage * 100), 1),
-                        'isAboveMarket': diff_percentage > 0
-                    },
-                    'pros': generate_pros(data),
-                    'cons': generate_cons(data),
-                    'recommendations': generate_recommendations(final_score),
-                    'confidence': 92 # Mock ML confidence
+            evaluation = {
+                'score': final_score,
+                'label': label,
+                'color': color,
+                'totalMonthlyCost': rent_offer,
+                'marketComparison': {
+                    'marketAverage': int(market_value),
+                    'percentDifference': round(abs(diff_percentage * 100), 1),
+                    'isAboveMarket': diff_percentage > 0
+                },
+                'pros': generate_pros(data),
+                'cons': generate_cons(data),
+                'recommendations': generate_recommendations(final_score),
+                'confidence': 92 # Mock ML confidence
+            }
+
+            try:
+                evaluation['aiAnalysis'] = {
+                    'available': True,
+                    **generate_offer_analysis(_offer_analysis_evidence(
+                        data, rent_offer, detected_city, base_rent, bedrooms, bathrooms,
+                        parking, furnished, utilities_included, market_value, diff_percentage,
+                        final_score, label,
+                    )),
                 }
-            })
+            except Exception as exc:
+                logger.warning('Gemini offer analysis unavailable: %s', exc)
+                evaluation['aiAnalysis'] = {
+                    'available': False,
+                    'message': 'AI Offer Analysis is unavailable. The deterministic evaluation is still shown.',
+                }
+
+            return JsonResponse({'success': True, 'evaluation': evaluation})
 
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
+
+
+def _offer_analysis_evidence(data, rent_offer, detected_city, base_rent, bedrooms, bathrooms,
+                             parking, furnished, utilities_included, market_value,
+                             diff_percentage, final_score, label):
+    """Describe the already-computed evaluator result without deriving a new score."""
+    bedroom_multiplier = 0.85 if bedrooms == 0 else 1.4 if bedrooms == 2 else 1.7 if bedrooms == 3 else 2.1 if bedrooms >= 4 else 1
+    bathroom_adjustment = (bathrooms - 1) * 150 if bathrooms > 1 else 0
+    return {
+        'user_inputs': {
+            'asking_rent': rent_offer,
+            'security_deposit': data.get('securityDeposit') or None,
+            'location': ' '.join(str(data.get('location', '')).split())[:300],
+            'square_feet': data.get('squareFeet') or None,
+            'bedrooms': bedrooms,
+            'bathrooms': bathrooms,
+            'parking': parking,
+            'furnished': furnished,
+            'laundry': data.get('laundry'),
+            'pet_friendly': data.get('petFriendly') == 'yes',
+            'utilities': 'included' if utilities_included else 'not included',
+            'utilities_cost': data.get('utilitiesCost') or None,
+            'lease_term_months': data.get('leaseTerm'),
+        },
+        'market_location_evidence': {
+            'source': 'CITY_RENT_DATA deterministic city baseline',
+            'detected_city': detected_city,
+            'baseline_market_rent': base_rent,
+            'fallback_baseline_used': detected_city == 'Unknown',
+        },
+        'deterministic_adjustments': {
+            'bedroom_multiplier': bedroom_multiplier,
+            'bathroom_adjustment': bathroom_adjustment,
+            'parking_adjustment': 150 if parking else 0,
+            'furnished_adjustment': 250 if furnished else 0,
+            'utilities_included_adjustment': 150 if utilities_included else 0,
+        },
+        'calculated_results': {
+            'estimated_market_rent': int(market_value),
+            'asking_rent_difference_percent': round(diff_percentage * 100, 1),
+            'asking_rent_is_above_estimate': diff_percentage > 0,
+            'deterministic_deal_score': final_score,
+            'deterministic_deal_label': label,
+        },
+        'limitations': [
+            'The market estimate is a deterministic city baseline adjusted only by the listed inputs.',
+            *(['No city match was found, so the deterministic default baseline was used.'] if detected_city == 'Unknown' else []),
+        ],
+    }
 
 def generate_pros(data):
     pros = []
@@ -383,108 +232,3 @@ def generate_recommendations(score):
     if score > 80: return ["Apply immediately", "Have deposit ready"]
     if score < 50: return ["Negotiate rent down", "Compare with similar listings"]
     return ["Good option", "Verify lease terms"]
-
-def _get_user_from_identifier(identifier):
-    """
-    Accept either a numeric user id or an email string and return the matching user.
-    """
-    if identifier is None:
-        raise CustomUser.DoesNotExist("User identifier is missing")
-    # Try numeric id first
-    try:
-        return CustomUser.objects.get(id=int(identifier))
-    except (ValueError, CustomUser.DoesNotExist):
-        # Fall back to email lookup (case-insensitive)
-        return CustomUser.objects.get(email__iexact=str(identifier))
-
-
-@csrf_exempt
-def save_roommate_preferences(request):
-    """
-    Persist roommate preferences for the signed-in user so matching can use real data.
-    Expected POST body: { user_id (or email), budget, cleanliness, sleepSchedule, interests[], rentAsk?, city?, major?, avatar? }
-    """
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid method'}, status=405)
-
-    try:
-        data = json.loads(request.body)
-        user_identifier = data.get('user_id')
-        user = _get_user_from_identifier(user_identifier)
-
-        profile, _ = RoommateProfile.objects.get_or_create(user=user)
-        profile.budget_max = data.get('budget', profile.budget_max or 0)
-        profile.rent_ask = data.get('rentAsk', profile.rent_ask or profile.budget_max or 0)
-        profile.cleanliness = data.get('cleanliness', profile.cleanliness or 'moderate')
-        profile.sleep_schedule = data.get('sleepSchedule', profile.sleep_schedule or 'flexible')
-        profile.interests = data.get('interests', profile.interests or [])
-        profile.city = data.get('city', profile.city)
-        profile.major = data.get('major', profile.major)
-        profile.avatar = data.get('avatar', profile.avatar)
-        profile.save()
-
-        return JsonResponse({'success': True, 'message': 'Preferences saved'})
-    except CustomUser.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
-
-
-@csrf_exempt
-def match_roommates(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            user_identifier = data.get('user_id')
-            if not user_identifier:
-                return JsonResponse({'success': False, 'message': 'user_id is required'}, status=400)
-
-            # Load the requesting user's saved preferences
-            try:
-                user = _get_user_from_identifier(user_identifier)
-                requester_profile = RoommateProfile.objects.get(user=user)
-            except RoommateProfile.DoesNotExist:
-                return JsonResponse({'success': False, 'message': 'Preferences not saved for user'}, status=404)
-            except CustomUser.DoesNotExist:
-                return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
-
-            user_prefs = {
-                'budget_max': requester_profile.budget_max,
-                'cleanliness': requester_profile.cleanliness,
-                'sleep_schedule': requester_profile.sleep_schedule,
-                'interests': requester_profile.interests or [],
-            }
-
-            # Gather candidate profiles (exclude self)
-            candidates = RoommateProfile.objects.exclude(user_id=user.id).select_related('user')
-
-            ranked_matches = []
-            for candidate in candidates:
-                candidate_profile = {
-                    'id': candidate.user_id,
-                    'name': candidate.user.first_name or candidate.user.username,
-                    'major': candidate.major or '',
-                    'rent_ask': candidate.rent_ask or candidate.budget_max,
-                    'cleanliness': candidate.cleanliness,
-                    'sleep_schedule': candidate.sleep_schedule,
-                    'interests': candidate.interests or [],
-                    'image': '',  # placeholder until avatars are stored
-                    'avatar': candidate.avatar or '',
-                    'city': candidate.city or '',
-                }
-
-                score = calculate_similarity(user_prefs, candidate_profile)
-                if score > 40:
-                    candidate_profile['match_score'] = score
-                    ranked_matches.append(candidate_profile)
-
-            ranked_matches.sort(key=lambda x: x['match_score'], reverse=True)
-
-            return JsonResponse({
-                'success': True,
-                'matches': ranked_matches,
-                'count': len(ranked_matches)
-            })
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})

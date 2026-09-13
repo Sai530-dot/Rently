@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API_BASE_URL } from '../config';
+import { api } from '../services/api';
 
 const OfferEvaluator = ({ onBack }) => {
   const [formData, setFormData] = useState({
@@ -162,12 +162,12 @@ const OfferEvaluator = ({ onBack }) => {
 
     // Simulate ML model processing stages
     const stages = [
-      { name: 'Loading ML model...', duration: 300 },
-      { name: 'Analyzing market data...', duration: 400 },
-      { name: 'Processing property features...', duration: 350 },
-      { name: 'Comparing with similar listings...', duration: 400 },
-      { name: 'Calculating risk factors...', duration: 350 },
-      { name: 'Generating recommendations...', duration: 400 }
+      { name: 'Preparing offer inputs...', duration: 300 },
+      { name: 'Applying the market baseline...', duration: 400 },
+      { name: 'Applying property adjustments...', duration: 350 },
+      { name: 'Calculating the deal score...', duration: 400 },
+      { name: 'Preparing grounded evidence...', duration: 350 },
+      { name: 'Generating the offer explanation...', duration: 400 }
     ];
 
     let progress = 0;
@@ -185,19 +185,9 @@ const OfferEvaluator = ({ onBack }) => {
     await new Promise(resolve => setTimeout(resolve, 300));
 
     try {
-      // Call backend ML API
-      const response = await fetch(`${API_BASE_URL}/offer-evaluation/evaluate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
+      const data = await api.evaluateOffer(formData);
 
       if (data.success) {
-        const rent = parseFloat(formData.monthlyRent);
         setEvaluation({
           ...data.evaluation,
           totalMonthlyCost: data.evaluation.totalMonthlyCost
@@ -615,6 +605,19 @@ const OfferEvaluator = ({ onBack }) => {
                 ))}
               </ul>
             </div>
+            {evaluation.aiAnalysis && (
+              <div className="details-card ai-offer-analysis">
+                <h4>AI Offer Analysis</h4>
+                {evaluation.aiAnalysis.available ? <>
+                  <p>{evaluation.aiAnalysis.overallExplanation}</p>
+                  <h5>Positive factors</h5>
+                  <ul>{evaluation.aiAnalysis.positiveFactors.map((factor, idx) => <li key={idx}>{factor}</li>)}</ul>
+                  <h5>Considerations</h5>
+                  <ul>{evaluation.aiAnalysis.considerations.map((consideration, idx) => <li key={idx}>{consideration}</li>)}</ul>
+                  {evaluation.aiAnalysis.limitations.length > 0 && <><h5>Limitations</h5><ul>{evaluation.aiAnalysis.limitations.map((limitation, idx) => <li key={idx}>{limitation}</li>)}</ul></>}
+                </> : <p>{evaluation.aiAnalysis.message}</p>}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1062,6 +1065,11 @@ const OfferEvaluator = ({ onBack }) => {
 
         .recommendations li {
           color: white;
+        }
+
+        .ai-offer-analysis h5 {
+          margin: 18px 0 8px;
+          font-size: 1rem;
         }
 
         .dark-mode .evaluator-shell { background: #0b1224; color: #e5e7eb; }
