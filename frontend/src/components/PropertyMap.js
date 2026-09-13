@@ -122,7 +122,7 @@ const PropertyMap = ({ properties, selectedPropertyId, onMarkerClick, onMapClick
       if (onMapClick) onMapClick();
     });
 
-  }, []);
+  }, [onMapClick]);
 
   // --- 3. Sync Markers ---
   useEffect(() => {
@@ -235,7 +235,7 @@ const PropertyMap = ({ properties, selectedPropertyId, onMarkerClick, onMapClick
       }
     });
 
-  }, [geocodedProperties, selectedPropertyId]);
+  }, [geocodedProperties, selectedPropertyId, onMarkerClick]);
 
   // --- 4. Fly To Logic (Same as before) ---
   useEffect(() => {
