@@ -1,0 +1,98 @@
+name: Ingest imported listings
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */8 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-listing-ingestion
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install scraper and Django dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/src/requirements.txt
+
+      - name: Prepare import snapshots
+        run: |
+          mkdir -p .ingestion-data
+          cp frontend/src/data/real_listings.json .ingestion-data/real_listings.json
+
+      - name: Run Kijiji scraper
+        id: kijiji
+        continue-on-error: true
+        run: |
+          python kijiji_scraper.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          snapshots = json.loads(Path('frontend/src/data/kijiji_listings.json').read_text(encoding='utf-8'))
+          if not isinstance(snapshots, list):
+              raise SystemExit('Kijiji scraper did not produce a JSON list.')
+          print(f'Kijiji scraped {len(snapshots)} record(s).')
+          if not snapshots:
+              print('::warning::Kijiji scraper produced zero records; existing database listings will remain unchanged.')
+          PY
+
+      - name: Stage Kijiji snapshots
+        if: steps.kijiji.outcome == 'success'
+        run: cp frontend/src/data/kijiji_listings.json .ingestion-data/kijiji_listings.json
+
+      - name: Report Kijiji scraper failure
+        if: steps.kijiji.outcome == 'failure'
+        run: echo "::warning::Kijiji scraper failed. It was excluded from this import; existing database listings were not removed."
+
+      - name: Run Craigslist scraper
+        id: craigslist
+        continue-on-error: true
+        run: |
+          python listing_scraper.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          snapshots = json.loads(Path('frontend/src/data/craigslist_listings.json').read_text(encoding='utf-8'))
+          if not isinstance(snapshots, list):
+              raise SystemExit('Craigslist scraper did not produce a JSON list.')
+          print(f'Craigslist scraped {len(snapshots)} record(s).')
+          if not snapshots:
+              print('::warning::Craigslist scraper produced zero records; existing database listings will remain unchanged.')
+          PY
+
+      - name: Stage Craigslist snapshots
+        if: steps.craigslist.outcome == 'success'
+        run: cp frontend/src/data/craigslist_listings.json .ingestion-data/craigslist_listings.json
+
+      - name: Report Craigslist scraper failure
+        if: steps.craigslist.outcome == 'failure'
+        run: echo "::warning::Craigslist scraper failed. It was excluded from this import; existing database listings were not removed."
+
+      - name: Fail when every scraper crashes
+        if: steps.kijiji.outcome == 'failure' && steps.craigslist.outcome == 'failure'
+        run: |
+          echo "Both listing scrapers failed; skipping the database import."
+          exit 1
+
+      - name: Import successful snapshots into Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python backend/src/manage.py import_listings --directory .ingestion-data
