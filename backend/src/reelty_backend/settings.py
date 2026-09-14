@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 
 try:
     import dj_database_url  # type: ignore
@@ -18,6 +19,7 @@ except Exception:
     pass
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / '.env')
 
 
 def _load_environment_file(path):
@@ -180,7 +182,8 @@ PASSWORD_RESET_TIMEOUT = 3600
 GEOAPIFY_API_KEY = os.environ.get('GEOAPIFY_API_KEY', '')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 # Gemini 2.5 Flash-Lite is unavailable to newly created Gemini API accounts.
-GEMINI_MODEL = 'gemini-3.5-flash-lite'
+# Using 3.1 Flash-Lite as the current cost-effective alternative.
+GEMINI_MODEL = 'gemini-3.1-flash-lite'
 LOCATION_INSIGHTS_CACHE_SECONDS = int(os.environ.get('LOCATION_INSIGHTS_CACHE_SECONDS', '3600'))
 LOCATION_INSIGHTS_HTTP_TIMEOUT_SECONDS = int(os.environ.get('LOCATION_INSIGHTS_HTTP_TIMEOUT_SECONDS', '10'))
 LOCATION_INSIGHTS_MAX_AMENITIES = int(os.environ.get('LOCATION_INSIGHTS_MAX_AMENITIES', '3'))

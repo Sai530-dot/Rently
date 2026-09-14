@@ -2,6 +2,9 @@
 .env.*
 !.env.example
 *.env
+.DS_Store
+backend/src/db.sqlite3
+backend/src/db.sqlite3-*
 node_modules
 dist
 build
@@ -29,3 +32,5 @@ __pycache__/
 venv
 .cache
 *.sqlite3
+backend/src/db.sqlite3
+backend/src/db.sqlite3-*
