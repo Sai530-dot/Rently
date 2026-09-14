@@ -27,23 +27,33 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fd5068; outline-offs
 .dashboard-heading p, .dashboard-section-heading p { color: var(--text-gray); margin: 0; }
 .dashboard-profile-prompt { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 20px; margin-bottom: 22px; border: 1px solid #b0d9c9; border-radius: 14px; background: #edf8f3; color: #225744; }
 .dashboard-profile-prompt p { margin: 2px 0 0; }
-.dashboard-stat-grid, .dashboard-property-grid, .dashboard-tools-grid, .dashboard-roommate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.dashboard-stat-grid, .dashboard-tools-grid, .dashboard-roommate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.dashboard-property-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .dashboard-stat-grid { margin-bottom: 38px; }
-.workspace .dashboard-stat { display: flex; flex-direction: column; gap: 7px; margin: 0; text-align: left; }
+.workspace .dashboard-stat { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; row-gap: 2px; margin: 0; padding: 18px 20px; text-align: left; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.workspace .dashboard-stat:hover { transform: translateY(-2px); border-color: #e8adb9; box-shadow: 0 7px 18px #572b3512; }
+.dashboard-icon-box { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #fbe8ec; color: #af3450; }
+.dashboard-icon-box svg { width: 18px; height: 18px; }
+.dashboard-stat .dashboard-icon-box { grid-row: span 3; }
 .dashboard-stat strong { font-size: 34px; letter-spacing: -1px; }
 .dashboard-stat span { color: var(--text-gray); }
+.dashboard-stat small { color: #af3450; font-size: 12px; font-weight: 600; }
 .dashboard-section { margin-bottom: 38px; }
 .dashboard-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
 .dashboard-section-heading h2 { margin: 0 0 3px; }
 .dashboard-section-heading button { flex: 0 0 auto; }
-.dashboard-property-card { border: 1px solid var(--border-gray); border-radius: 16px; overflow: hidden; background: var(--white); }
-.workspace .dashboard-property-image { display: block; width: 100%; padding: 0; border: 0; border-radius: 0; }
-.dashboard-property-image .rental-image, .dashboard-property-image .rental-placeholder { height: 170px; }
-.workspace .dashboard-property-copy { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; border: 0; border-radius: 0; text-align: left; }
+.dashboard-recommendations { padding: 24px; border: 1px solid #f1dfe2; border-radius: 20px; background: #fff9f8; }
+.dashboard-recommendations .dashboard-section-heading { margin-bottom: 18px; }
+.workspace .dashboard-property-card { display: block; overflow: hidden; padding: 0; border-radius: 16px; background: var(--white); text-align: left; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.workspace .dashboard-property-card:hover { transform: translateY(-3px); border-color: #e8adb9; box-shadow: 0 10px 22px #572b351a; }
+.dashboard-property-card .rental-image, .dashboard-property-card .rental-placeholder { height: 178px; }
+.dashboard-property-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 15px 16px 17px; }
 .dashboard-property-copy strong { font-size: 21px; }
 .dashboard-property-copy strong small, .dashboard-property-copy span, .dashboard-property-copy > small { color: var(--text-gray); font-weight: 400; }
 .dashboard-property-copy > small { font-size: 13px; }
-.workspace .dashboard-tool { margin: 0; text-align: left; }
+.workspace .dashboard-tool { display: flex; align-items: flex-start; gap: 13px; margin: 0; text-align: left; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.workspace .dashboard-tool:hover { transform: translateY(-2px); border-color: #e8adb9; box-shadow: 0 7px 18px #572b3512; }
+.dashboard-tool .dashboard-icon-box { flex: 0 0 34px; }
 .dashboard-tool h3 { margin: 0 0 7px; font-size: 18px; }
 .dashboard-tool p { margin: 0; color: var(--text-gray); }
 .workspace .dashboard-roommate { display: flex; align-items: center; gap: 12px; text-align: left; }
@@ -150,7 +160,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fd5068; outline-offs
 .dark-mode .notice.error { background: #442630; color: #ffc1cf; border-color: #874251; }
 .dark-mode .rental-placeholder { background: #26322f; color: #9bb5a9; }
 .dark-mode .dashboard-profile-prompt { background: #14382c; color: #bde4d3; border-color: #2d6250; }
-@media (max-width: 1100px) { .rental-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .workspace { padding: 32px 24px; } .map-layout { grid-template-columns: minmax(0,1fr) 260px; } }
+.dark-mode .dashboard-recommendations { background: #31272b; border-color: #5a3d45; }
+.dark-mode .dashboard-icon-box { background: #4b2d36; color: #ffadc0; }
+@media (max-width: 1100px) { .rental-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .workspace { padding: 32px 24px; } .map-layout { grid-template-columns: minmax(0,1fr) 260px; } .dashboard-property-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .dashboard-property-grid, .dashboard-tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 768px) {
   .workspace { padding: 28px 18px 80px; }
@@ -169,7 +181,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #fd5068; outline-offs
   .property-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .dashboard-stat-grid, .dashboard-property-grid, .dashboard-tools-grid, .dashboard-roommate-grid { grid-template-columns: 1fr; gap: 14px; }
   .dashboard-stat-grid { margin-bottom: 30px; }
-  .workspace .dashboard-stat { flex-direction: row; align-items: center; gap: 18px; }
+  .dashboard-recommendations { padding: 18px; }
   .dashboard-section-heading { align-items: flex-start; }
   .dashboard-profile-prompt, .workspace .dashboard-empty-inline { align-items: flex-start; flex-direction: column; }
 }
