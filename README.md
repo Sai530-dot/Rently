@@ -65,7 +65,9 @@ SQLite is suitable for local development. Production needs a persistent PostgreS
 
 Copy `.env.example` into your hosting provider's environment settings. At minimum, set `DJANGO_DEBUG=false`, a long random `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, and `DATABASE_URL`. Configure the SMTP settings to enable delivered password-reset mail.
 
-The root `vercel.json` builds the React app and sends `/api/*` to the Django serverless function. Run database migrations separately whenever a deployment includes new migrations.
+The root `vercel.json` uses Vercel Services so the `frontend/` Create React App and `backend/src/` Django application deploy together in the single `rently` project. Public routing sends `/api` and `/api/*` to Django while all other paths go to the React SPA. The backend receives the original `/api/...` request path, so no frontend API base URL change is required. Keep the Vercel project Root Directory at the repository root and use the Services framework preset. Run database migrations separately whenever a deployment includes new migrations.
+
+Set these production environment variables in the `rently` Vercel project: `DATABASE_URL`, `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`, `DJANGO_ALLOWED_HOSTS=rently-sand.vercel.app`, `CORS_ALLOWED_ORIGINS=https://rently-sand.vercel.app`, `FRONTEND_URL=https://rently-sand.vercel.app`, `GEOAPIFY_API_KEY`, and `GEMINI_API_KEY`. Do not set `GEMINI_API_KEY` as a `REACT_APP_*` variable.
 
 ## Location Insights backend configuration
 
